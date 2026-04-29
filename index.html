@@ -311,11 +311,10 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
         <tbody id="stats-body"></tbody>
       </table>
     </div>
-    <button class="mvp-btn" onclick="reqMvp()">MVP 추천받기 ✨</button>
+    <button class="mvp-btn" id="mvp-btn" onclick="reqMvp()">MVP 추천받기 ✨</button>
+    <div id="mvp-result" style="display:none;margin-top:12px;"></div>
   </div>
 </div>
-
-<script>
 // ══════════════════════════════════════════
 // ★ Supabase 설정
 // ══════════════════════════════════════════
@@ -854,20 +853,124 @@ function renderStats() {
   }).join('');
 }
 
-function reqMvp() {
-  const list=fg('sy','sm','sd');
-  if(!list.length){alert('먼저 경기 데이터를 입력해주세요!');return;}
-  const sm={};
-  players.forEach(p=>{sm[p.id]={name:p.name,games:0,wins:0,points:0,goals:0,assists:0};});
-  list.forEach(g=>{
-    gTeamA(g).forEach(id=>{if(!sm[id])return;sm[id].games++;if(gResultA(g)==='win'){sm[id].wins++;sm[id].points+=2;}else if(gResultA(g)==='draw')sm[id].points++;});
-    gTeamB(g).forEach(id=>{if(!sm[id])return;sm[id].games++;if(gResultB(g)==='win'){sm[id].wins++;sm[id].points+=2;}else if(gResultB(g)==='draw')sm[id].points++;});
-    gGoals(g).forEach(id=>{if(sm[id])sm[id].goals++;});
-    gAssists(g).forEach(id=>{if(sm[id])sm[id].assists++;});
+async function reqMvp() {
+  const list = fg('sy','sm','sd');
+  if (!list.length) { alert('먼저 경기 데이터를 입력해주세요!'); return; }
+
+  // 선수별 통계 계산
+  const sm = {};
+  players.forEach(p => { sm[p.id] = { name: p.name, games: 0, wins: 0, draws: 0, losses: 0, points: 0, goals: 0, assists: 0, conceded: 0 }; });
+
+  list.forEach(g => {
+    const sa = gScoreA(g), sb = gScoreB(g);
+    gTeamA(g).forEach(id => {
+      if (!sm[id]) return;
+      sm[id].games++;
+      sm[id].conceded += sb; // A팀 선수는 B팀 득점이 실점
+      if (gResultA(g) === 'win') { sm[id].wins++; sm[id].points += 2; }
+      else if (gResultA(g) === 'draw') { sm[id].draws++; sm[id].points++; }
+      else sm[id].losses++;
+    });
+    gTeamB(g).forEach(id => {
+      if (!sm[id]) return;
+      sm[id].games++;
+      sm[id].conceded += sa; // B팀 선수는 A팀 득점이 실점
+      if (gResultB(g) === 'win') { sm[id].wins++; sm[id].points += 2; }
+      else if (gResultB(g) === 'draw') { sm[id].draws++; sm[id].points++; }
+      else sm[id].losses++;
+    });
+    gGoals(g).forEach(id => { if (sm[id]) sm[id].goals++; });
+    gAssists(g).forEach(id => { if (sm[id]) sm[id].assists++; });
   });
-  const summary=Object.values(sm).filter(s=>s.games>0).map(s=>`${s.name}: ${s.games}경기 ${s.wins}승 ${s.points}점 골${s.goals} AS${s.assists}`).join('\n');
-  if(typeof sendPrompt==='function') sendPrompt(`아래 풋살 통계를 분석해서 MVP를 추천해줘:\n${summary}`);
-  else alert('Claude 앱에서 MVP 추천받기 버튼을 눌러주세요!');
+
+  const statRows = Object.values(sm).filter(s => s.games > 0).map(s => ({
+    ...s,
+    avgPoints: (s.points / s.games).toFixed(2),
+    winRate: Math.round(s.wins / s.games * 100),
+    avgAttack: ((s.goals + s.assists) / s.games).toFixed(2),
+    avgConceded: (s.conceded / s.games).toFixed(2)
+  }));
+
+  const summary = statRows.map(s =>
+    `${s.name}: ${s.games}경기 ${s.wins}승${s.draws}무${s.losses}패 | 평균승점 ${s.avgPoints} | 승률 ${s.winRate}% | 평균공격포인트 ${s.avgAttack} | 경기당평균실점 ${s.avgConceded}`
+  ).join('\n');
+
+  // 버튼 로딩 상태
+  const btn = document.getElementById('mvp-btn');
+  const resultEl = document.getElementById('mvp-result');
+  btn.textContent = '분석 중...'; btn.disabled = true;
+  resultEl.style.display = 'none';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `아래는 풋살 경기 통계야. MVP를 1~3위로 선정해줘.
+
+평가 기준 (가중치 2:1:1):
+- 승리 기여(2배): 평균 획득 승점, 승률
+- 공격 기여(1배): 경기당 평균 공격포인트(골+어시스트)
+- 수비 기여(1배): 경기당 평균 실점 (낮을수록 좋음, 우리 룰은 최대 2골 경기)
+
+통계:
+${summary}
+
+응답 형식을 정확히 지켜줘 (다른 말 없이 아래 형식만):
+🥇 1위: [이름]
+한줄평: [이유 1~2문장]
+
+🥈 2위: [이름]
+한줄평: [이유 1~2문장]
+
+🥉 3위: [이름]
+한줄평: [이유 1~2문장]`
+        }]
+      })
+    });
+
+    const data = await res.json();
+    const text = data.content?.map(c => c.text || '').join('') || '';
+
+    // 결과 파싱해서 카드로 렌더링
+    const lines = text.trim().split('\n').filter(l => l.trim());
+    let html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+    let i = 0;
+    const colors = [
+      { border:'#FEF3C7', bg:'#FFFBEB', icon:'🥇' },
+      { border:'#F1F5F9', bg:'#F8FAFC', icon:'🥈' },
+      { border:'#FEE2E2', bg:'#FFF5F5', icon:'🥉' }
+    ];
+    let rank = 0;
+    while (i < lines.length && rank < 3) {
+      const line = lines[i];
+      if (line.startsWith('🥇') || line.startsWith('🥈') || line.startsWith('🥉')) {
+        const name = line.replace(/🥇|🥈|🥉|\d+위:|1위:|2위:|3위:/g,'').replace('위:','').trim();
+        const commentLine = lines[i+1] || '';
+        const comment = commentLine.replace('한줄평:','').trim();
+        const c = colors[rank];
+        html += `<div style="background:${c.bg};border:1.5px solid ${c.border};border-radius:12px;padding:14px 16px;">
+          <div style="font-size:16px;font-weight:800;color:#111827;margin-bottom:4px;">${c.icon} ${name}</div>
+          <div style="font-size:13px;color:#6B7280;line-height:1.5;">${comment}</div>
+        </div>`;
+        rank++; i += 2;
+      } else { i++; }
+    }
+    html += '</div>';
+
+    resultEl.innerHTML = `<div class="card"><div class="card-title">✨ MVP 분석 결과</div>${html}</div>`;
+    resultEl.style.display = 'block';
+
+  } catch(e) {
+    resultEl.innerHTML = `<div class="card"><div style="color:#DC2626;font-size:14px;">분석 실패: ${e.message}</div></div>`;
+    resultEl.style.display = 'block';
+  }
+
+  btn.textContent = 'MVP 추천받기 ✨'; btn.disabled = false;
 }
 
 const dateEl = document.getElementById('game-date');
