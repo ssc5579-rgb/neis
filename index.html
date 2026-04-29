@@ -498,12 +498,23 @@ async function removePlayer(id, name) {
   });
 }
 
+// ★ 수정 1: 선수 목록 가나다순 정렬, 용병 포함 시 맨 뒤
+function sortPlayers(arr) {
+  return [...arr].sort((a, b) => {
+    const aYong = a.name.includes('용병');
+    const bYong = b.name.includes('용병');
+    if (aYong && !bYong) return 1;
+    if (!aYong && bYong) return -1;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+}
+
 function renderPlayerList() {
   const el = document.getElementById('player-list');
   document.getElementById('pcnt').textContent = `(${players.length}명)`;
   if (!players.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">👟</div>선수를 추가해주세요</div>'; return; }
   el.innerHTML = '';
-  players.forEach(p => {
+  sortPlayers(players).forEach(p => {
     const row = document.createElement('div'); row.className = 'pr';
     row.innerHTML = `<div class="pi"><div class="pav">${p.name.charAt(0)}</div><span class="pn">${p.name}</span></div>`;
     const btn = document.createElement('button'); btn.className = 'btn btn-danger'; btn.textContent = '삭제';
@@ -515,7 +526,7 @@ function renderPlayerList() {
 function renderAttend() {
   const el = document.getElementById('attend-chips'); el.innerHTML = '';
   if (!players.length) { el.innerHTML = '<span style="font-size:14px;color:var(--hint);">선수 관리 탭에서 먼저 추가해주세요</span>'; updateAttCnt(); return; }
-  players.forEach(p => {
+  sortPlayers(players).forEach(p => {
     const on = attendees.some(id => String(id) === String(p.id));
     const c = document.createElement('span'); c.className = 'chip' + (on ? ' on' : '');
     c.textContent = (on ? '✓ ' : '') + p.name;
@@ -746,6 +757,7 @@ function renderLog() {
   });
 }
 
+// ★ 수정 3: 기본 정렬 승점 내림차순 (-1)
 let sortKey = 'points', sortDir = -1;
 
 function sortStats(key) {
@@ -776,14 +788,24 @@ function renderStats() {
   const byGoals = [...rows].filter(r=>r.goals>0).sort((a,b)=>b.goals-a.goals);
   const byAssists = [...rows].filter(r=>r.assists>0).sort((a,b)=>b.assists-a.assists);
   const byPoints = [...rows].filter(r=>r.points>0).sort((a,b)=>b.points-a.points);
+
+  // ★ 수정 2: 승률 카드 추가 (승률 = 승 / 경기 * 100)
+  const byWinRate = [...rows].filter(r=>r.games>0).sort((a,b)=>(b.wins/b.games)-(a.wins/a.games));
+  const topWinRate = byWinRate[0];
+  const topWinRateStr = topWinRate ? Math.round(topWinRate.wins/topWinRate.games*100)+'%' : '0%';
   
   const statSumm = document.getElementById('stat-summary');
   if(statSumm) {
     statSumm.innerHTML=`
       <div class="sb">
-        <div class="sb-label">출장 경기</div>
-        <div class="sb-val">${list.length}<span>경기</span></div>
-        <div class="sb-leader">${byGames[0]?'👑 '+byGames[0].name+' '+byGames[0].games+'경기':'-'}</div>
+        <div class="sb-label">승점</div>
+        <div class="sb-val">${byPoints[0]?.points??0}<span>점</span></div>
+        <div class="sb-leader">${byPoints[0]?'🏆 '+byPoints[0].name:'-'}</div>
+      </div>
+      <div class="sb">
+        <div class="sb-label">승률</div>
+        <div class="sb-val">${topWinRate ? Math.round(topWinRate.wins/topWinRate.games*100) : 0}<span>%</span></div>
+        <div class="sb-leader">${topWinRate?'📈 '+topWinRate.name+' '+topWinRateStr:'-'}</div>
       </div>
       <div class="sb">
         <div class="sb-label">득점</div>
@@ -795,15 +817,15 @@ function renderStats() {
         <div class="sb-val">${byAssists[0]?.assists??0}<span>AS</span></div>
         <div class="sb-leader">${byAssists[0]?'🎯 '+byAssists[0].name:'-'}</div>
       </div>
-      <div class="sb">
-        <div class="sb-label">승점</div>
-        <div class="sb-val">${byPoints[0]?.points??0}<span>점</span></div>
-        <div class="sb-leader">${byPoints[0]?'🏆 '+byPoints[0].name:'-'}</div>
+      <div class="sb" style="grid-column:1/-1;">
+        <div class="sb-label">출장 경기</div>
+        <div class="sb-val">${list.length}<span>경기</span></div>
+        <div class="sb-leader">${byGames[0]?'👑 '+byGames[0].name+' '+byGames[0].games+'경기':'-'}</div>
       </div>
     `;
   }
 
-  // 4. 경기 참석한 모든 선수 표시 (승점 없어도 포함)
+  // 경기 참석한 모든 선수 표시 (승점 없어도 포함)
   let sorted = [...rows].filter(r=>r.games>0);
   sorted.sort((a,b) => sortDir * (b[sortKey] - a[sortKey]));
 
