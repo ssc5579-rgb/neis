@@ -307,7 +307,7 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
     <div class="card" style="overflow-x:auto;">
       <div class="card-title">선수별 순위</div>
       <table class="rtable">
-        <thead><tr><th>#</th><th>선수</th><th style="cursor:pointer;user-select:none;" onclick="sortStats('games')">경기<span id="sort-games"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('wins')">승<span id="sort-wins"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('draws')">무<span id="sort-draws"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('losses')">패<span id="sort-losses"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('points')">승점<span id="sort-points"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('goals')">골<span id="sort-goals"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('assists')">AS<span id="sort-assists"></span></th></tr></thead>
+        <thead><tr><th>#</th><th>선수</th><th style="cursor:pointer;user-select:none;" onclick="sortStats('games')">경기<span id="sort-games"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('wins')">승<span id="sort-wins"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('draws')">무<span id="sort-draws"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('losses')">패<span id="sort-losses"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('points')">승점<span id="sort-points"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('winRate')">승률<span id="sort-winRate"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('goals')">골<span id="sort-goals"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('assists')">AS<span id="sort-assists"></span></th></tr></thead>
         <tbody id="stats-body"></tbody>
       </table>
     </div>
@@ -791,6 +791,7 @@ function renderStats() {
 
   // ★ 수정 2: 승률 카드 추가 (승률 = 승 / 경기 * 100)
   const byWinRate = [...rows].filter(r=>r.games>0).sort((a,b)=>(b.wins/b.games)-(a.wins/a.games));
+  const byAttackPts = [...rows].filter(r=>r.games>0).sort((a,b)=>(b.goals+b.assists)-(a.goals+a.assists));
   const topWinRate = byWinRate[0];
   const topWinRateStr = topWinRate ? Math.round(topWinRate.wins/topWinRate.games*100)+'%' : '0%';
   
@@ -817,32 +818,39 @@ function renderStats() {
         <div class="sb-val">${byAssists[0]?.assists??0}<span>AS</span></div>
         <div class="sb-leader">${byAssists[0]?'🎯 '+byAssists[0].name:'-'}</div>
       </div>
-      <div class="sb" style="grid-column:1/-1;">
+      <div class="sb">
         <div class="sb-label">출장 경기</div>
         <div class="sb-val">${list.length}<span>경기</span></div>
         <div class="sb-leader">${byGames[0]?'👑 '+byGames[0].name+' '+byGames[0].games+'경기':'-'}</div>
+      </div>
+      <div class="sb">
+        <div class="sb-label">공격 포인트</div>
+        <div class="sb-val">${byAttackPts[0]?(byAttackPts[0].goals+byAttackPts[0].assists):0}<span>G+A</span></div>
+        <div class="sb-leader">${byAttackPts[0]?'🔥 '+byAttackPts[0].name:'-'}</div>
       </div>
     `;
   }
 
   // 경기 참석한 모든 선수 표시 (승점 없어도 포함)
   let sorted = [...rows].filter(r=>r.games>0);
+  sorted.forEach(s => { s.winRate = s.games>0 ? Math.round(s.wins/s.games*100) : 0; });
   sorted.sort((a,b) => sortDir * (a[sortKey] - b[sortKey]));
 
   // 정렬 화살표 업데이트
-  ['games','wins','draws','losses','points','goals','assists'].forEach(k=>{
+  ['games','wins','draws','losses','points','winRate','goals','assists'].forEach(k=>{
     const el=document.getElementById('sort-'+k);
     if(el) el.textContent = sortKey===k ? (sortDir===-1?' ▼':' ▲') : '';
   });
 
   const tbody=document.getElementById('stats-body');
   if(!tbody) return;
-  if(!sorted.length){tbody.innerHTML='<tr><td colspan="9" class="empty">데이터 없음</td></tr>';return;}
+  if(!sorted.length){tbody.innerHTML='<tr><td colspan="10" class="empty">데이터 없음</td></tr>';return;}
   tbody.innerHTML=sorted.map((s,i)=>{
     const rc=i===0?'r1':i===1?'r2':i===2?'r3':'r0';
+    const wr = s.games>0 ? Math.round(s.wins/s.games*100) : 0;
     return `<tr><td><span class="rn ${rc}">${i+1}</span></td><td>${s.name}</td><td>${s.games}</td>
       <td style="color:var(--win);font-weight:700;">${s.wins}</td><td style="color:var(--draw);">${s.draws}</td><td style="color:var(--loss);">${s.losses}</td>
-      <td><span class="pts">${s.points}</span></td><td>${s.goals}</td><td>${s.assists}</td></tr>`;
+      <td><span class="pts">${s.points}</span></td><td>${wr}%</td><td>${s.goals}</td><td>${s.assists}</td></tr>`;
   }).join('');
 }
 
