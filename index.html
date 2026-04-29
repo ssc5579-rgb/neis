@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>풋살 성적 기록</title>
+<style>
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --blue: #1A8FE3; --blue-dark: #1270B8;
+  --green: #00C896; --green-dark: #00A07A;
+  --bg: #F0F2F5; --card: #fff; --text: #111827;
+  --sub: #6B7280; --hint: #9CA3AF; --border: #E5E7EB;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+  --r: 16px; --rs: 10px;
+  --win: #16A34A; --win-bg: #DCFCE7;
+  --draw: #D97706; --draw-bg: #FEF3C7;
+  --loss: #DC2626; --loss-bg: #FEE2E2;
+}
+html,body { background: var(--bg); font-family: 'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif; }
+.app { max-width: 480px; margin: 0 auto; padding-bottom: 80px; min-height: 100vh; }
+
+/* 헤더 */
+.hdr { background: linear-gradient(135deg,var(--blue),var(--blue-dark)); padding: 20px 16px 16px; padding-top: calc(20px + env(safe-area-inset-top)); color:#fff; }
+.hdr h1 { font-size:20px; font-weight:700; }
+.hdr p { font-size:13px; opacity:.75; margin-top:2px; }
+
+/* 탭 */
+.tabs { display:flex; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+.tab { flex:1; padding:14px 4px; font-size:13px; font-weight:500; color:var(--sub); border:none; background:none; cursor:pointer; border-bottom:3px solid transparent; }
+.tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:700; }
+
+/* 섹션 */
+.sec { display:none; padding:14px 12px; }
+.sec.active { display:block; }
+
+/* 카드 */
+.card { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow); padding:16px; margin-bottom:12px; }
+.card-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:14px; }
+
+/* 폼 */
+.field { margin-bottom:12px; }
+.fl { font-size:12px; font-weight:600; color:var(--sub); margin-bottom:6px; letter-spacing:.3px; text-transform:uppercase; }
+input[type=date],input[type=text],input[type=number],select {
+  width:100%; padding:13px 14px; border:1.5px solid var(--border); border-radius:var(--rs);
+  font-size:16px; font-family:inherit; color:var(--text); background:#F9FAFB; outline:none; -webkit-appearance:none;
+}
+input:focus,select:focus { border-color:var(--blue); background:#fff; }
+
+/* 버튼 */
+.btn { padding:13px 18px; border-radius:var(--rs); font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; border:none; }
+.btn-primary { background:linear-gradient(135deg,var(--blue),var(--blue-dark)); color:#fff; width:100%; padding:15px; font-size:17px; box-shadow:0 4px 12px rgba(26,143,227,.35); }
+.btn-primary:active { opacity:.85; transform:scale(.98); }
+.btn-outline { background:#fff; border:1.5px solid var(--border); color:var(--sub); padding:11px 14px; font-size:14px; font-weight:600; }
+.btn-danger { background:#FEE2E2; color:var(--loss); padding:10px 16px; font-size:14px; font-weight:600; border-radius:8px; }
+.btn-row { display:flex; gap:8px; margin-top:10px; }
+
+/* 참석 칩 */
+.chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+.chip { padding:10px 18px; border-radius:20px; font-size:15px; font-weight:500; cursor:pointer; border:1.5px solid var(--border); background:#F9FAFB; color:var(--sub); user-select:none; }
+.chip.on { background:#DBEAFE; border-color:var(--blue); color:var(--blue); font-weight:700; }
+.att-cnt { font-size:13px; color:var(--sub); }
+.att-cnt span { color:var(--blue); font-weight:700; }
+
+/* 팀 배정 — 좌우 패널 */
+.team-panels { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px; }
+.tp { border-radius:var(--rs); overflow:hidden; }
+.tp-a { border:1.5px solid #BFDBFE; }
+.tp-b { border:1.5px solid #A7F3D0; }
+.tp-head { padding:10px 12px; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:space-between; }
+.tp-head-a { background:#EFF6FF; color:var(--blue-dark); }
+.tp-head-b { background:#ECFDF5; color:var(--green-dark); }
+.tp-cnt { font-size:12px; font-weight:500; opacity:.7; }
+.tp-body { background:var(--card); display:grid; grid-template-columns:1fr 1fr; }
+.tp-chip { display:block; width:100%; padding:12px 8px; font-size:13px; font-weight:500; color:var(--text); text-align:center; border:none; border-top:1px solid var(--border); background:var(--card); cursor:pointer; font-family:inherit; }
+.tp-chip:nth-child(odd) { border-right:1px solid var(--border); }
+.tp-chip:active { background:#F9FAFB; }
+.tp-chip.in-a { background:#EFF6FF; color:var(--blue-dark); font-weight:700; }
+.tp-chip.in-b { background:#ECFDF5; color:var(--green-dark); font-weight:700; }
+.tp-chip.in-other { opacity:.3; cursor:not-allowed; }
+.tp-hint { font-size:12px; color:var(--hint); margin-top:6px; margin-bottom:2px; }
+
+/* 점수판 */
+.scoreboard { background:#0F172A; border-radius:var(--rs); padding:16px 12px; margin:14px 0; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.sc-team { text-align:center; flex:1; }
+.sc-label { font-size:12px; font-weight:700; letter-spacing:1px; margin-bottom:8px; }
+.sc-a { color:#60A5FA; } .sc-b { color:#34D399; }
+.sc-input input { background:#1E293B; border:1.5px solid #334155; color:#F1F5F9; font-size:36px; font-weight:800; text-align:center; border-radius:10px; padding:10px 4px; width:88px; font-family:inherit; -webkit-appearance:none; }
+.sc-input input:focus { border-color:#60A5FA; }
+.sc-div { color:#475569; font-size:32px; font-weight:800; }
+
+/* 배지 */
+.badge { display:inline-flex; align-items:center; padding:5px 12px; border-radius:20px; font-size:13px; font-weight:700; }
+.bw { background:var(--win-bg); color:var(--win); }
+.bd { background:var(--draw-bg); color:var(--draw); }
+.bl { background:var(--loss-bg); color:var(--loss); }
+
+/* 경기 카드 */
+.gc { background:var(--card); border-radius:var(--rs); box-shadow:var(--shadow-sm); padding:14px; margin-bottom:10px; }
+.gc-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.gc-date { font-size:13px; color:var(--hint); font-weight:500; }
+.gc-row { display:grid; grid-template-columns:1fr 64px 1fr; align-items:center; gap:8px; }
+.gc-names { font-size:13px; color:var(--sub); line-height:1.5; }
+.gc-score { background:#0F172A; border-radius:10px; padding:10px 4px; text-align:center; color:#F1F5F9; font-size:20px; font-weight:800; }
+.gc-gi { font-size:12px; color:var(--hint); margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+
+/* 통계 요약 */
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+.sb { background:var(--card); border-radius:var(--rs); box-shadow:var(--shadow-sm); padding:14px; }
+.sb-label { font-size:11px; font-weight:600; color:var(--sub); text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+.sb-val { font-size:24px; font-weight:800; color:var(--text); line-height:1.1; }
+.sb-val span { font-size:13px; font-weight:600; color:var(--sub); }
+.sb-leader { font-size:12px; color:var(--blue); font-weight:600; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* 순위표 */
+.rtable { width:100%; border-collapse:collapse; font-size:14px; }
+.rtable th { padding:10px 6px; font-size:11px; font-weight:700; color:var(--sub); text-align:center; border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:.3px; }
+.rtable th:nth-child(2) { text-align:left; }
+.rtable td { padding:12px 6px; text-align:center; border-bottom:1px solid var(--border); color:var(--text); font-weight:500; }
+.rtable td:nth-child(2) { text-align:left; font-weight:700; }
+.rtable tr:last-child td { border-bottom:none; }
+.rn { width:26px; height:26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; }
+.r1 { background:#FEF3C7; color:#B45309; }
+.r2 { background:#F1F5F9; color:#64748B; }
+.r3 { background:#FEE2E2; color:#B91C1C; }
+.r0 { background:var(--bg); color:var(--sub); }
+.pts { background:linear-gradient(135deg,var(--blue),var(--blue-dark)); color:#fff; border-radius:8px; padding:4px 10px; font-size:13px; font-weight:700; }
+
+/* 선수 관리 */
+.pr { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border); }
+.pr:last-child { border-bottom:none; }
+.pav { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--blue),var(--blue-dark)); display:flex; align-items:center; justify-content:center; color:#fff; font-size:16px; font-weight:700; margin-right:12px; flex-shrink:0; }
+.pi { display:flex; align-items:center; flex:1; }
+.pn { font-size:16px; font-weight:600; color:var(--text); }
+
+/* 기타 */
+.step-ind { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.sn { width:28px; height:28px; border-radius:50%; background:var(--blue); color:#fff; font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.sn.done { background:var(--green); }
+.st { font-size:16px; font-weight:700; color:var(--text); }
+.divider { border:none; border-top:1px solid var(--border); margin:14px 0; }
+.empty { text-align:center; padding:40px 16px; color:var(--hint); font-size:15px; }
+.empty-icon { font-size:40px; margin-bottom:10px; }
+.btag { display:inline-block; background:#F1F5F9; border-radius:20px; padding:5px 12px; font-size:13px; color:var(--sub); margin:3px; font-weight:500; }
+.frow { display:flex; gap:8px; margin-bottom:12px; }
+.frow select { flex:1; font-size:15px; }
+.ga-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.ga-row select { flex:1; font-size:15px; padding:11px 10px; }
+.mvp-btn { width:100%; margin-top:12px; background:linear-gradient(135deg,#7C3AED,#6D28D9); color:#fff; border:none; padding:16px; border-radius:var(--rs); font-size:16px; font-weight:700; font-family:inherit; cursor:pointer; box-shadow:0 4px 12px rgba(124,58,237,.35); }
+
+/* 모달 */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:999; padding:20px; }
+.mbox { background:var(--card); border-radius:var(--r); padding:28px 22px; width:100%; max-width:340px; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.mbox h3 { font-size:18px; font-weight:700; margin-bottom:10px; }
+.mbox p { font-size:15px; color:var(--sub); margin-bottom:22px; line-height:1.5; }
+.mbtns { display:flex; gap:10px; }
+.mbtns .btn { flex:1; }
+
+/* 연동 상태 */
+.sync-bar { display:flex; align-items:center; gap:6px; padding:8px 16px; background:rgba(255,255,255,.15); border-radius:8px; margin-top:10px; font-size:12px; color:#fff; }
+.sync-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.dot-ok { background:#4ade80; }
+.dot-err { background:#f87171; }
+.dot-load { background:#fbbf24; animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* 경기번호 입력 좁게 */
+.game-no-row { display:flex; align-items:center; gap:10px; }
+.game-no-row input { width:70px; flex:none; text-align:center; }
+.game-no-row span { font-size:15px; color:var(--sub); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="modal" id="modal" style="display:none;">
+    <div class="mbox">
+      <h3 id="modal-title">확인</h3>
+      <p id="modal-msg"></p>
+      <div class="mbtns">
+        <button class="btn btn-outline" id="modal-cancel">취소</button>
+        <button class="btn btn-danger" id="modal-ok" style="flex:1;padding:13px;font-size:15px;">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hdr">
+    <h1>⚽ 풋살 성적 기록</h1>
+    <p>팀 매치 · 골 · 어시스트 트래커</p>
+    <div class="sync-bar" id="sync-bar">
+      <div class="sync-dot dot-load" id="sync-dot"></div>
+      <span id="sync-msg">서버 연결 중...</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('record')">경기 기록</button>
+    <button class="tab" onclick="switchTab('players')">선수 관리</button>
+    <button class="tab" onclick="switchTab('stats')">통계</button>
+  </div>
+
+  <div id="tab-record" class="sec active">
+    <div class="card" id="step1-card">
+      <div class="step-ind">
+        <div class="sn" id="sn1">1</div>
+        <span class="st">날짜 · 참석자</span>
+      </div>
+      <div class="field">
+        <div class="fl">날짜</div>
+        <input type="date" id="game-date">
+      </div>
+      <div class="field">
+        <div class="fl">참석 선수 선택</div>
+        <div class="chips" id="attend-chips"></div>
+        <div class="att-cnt" id="att-cnt"><span>0</span>명 선택됨</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-outline" style="flex:1" onclick="selAll()">전체 선택</button>
+        <button class="btn btn-outline" style="flex:1" onclick="selNone()">전체 해제</button>
+      </div>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="confirmAttend()">참석자 확정 →</button>
+    </div>
+
+    <div class="card" id="step2-card" style="display:none;">
+      <div class="step-ind">
+        <div class="sn done">✓</div>
+        <span class="st">경기 입력</span>
+        <button class="btn btn-outline" onclick="resetAttend()" style="margin-left:auto;padding:8px 14px;font-size:13px;">다시 선택</button>
+      </div>
+      <div id="bench-info" style="margin-bottom:12px;"></div>
+      <hr class="divider">
+
+      <div class="field">
+        <div class="fl">경기 번호</div>
+        <div class="game-no-row">
+          <input type="number" id="game-no" min="1" max="20" value="1">
+          <span>번째 경기</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="fl">팀 배정</div>
+        <p class="tp-hint">각 팀에서 선수를 눌러 추가/제거하세요</p>
+        <div class="team-panels">
+          <div class="tp tp-a">
+            <div class="tp-head tp-head-a">팀 A <span class="tp-cnt" id="cnt-a">(0/6)</span></div>
+            <div class="tp-body" id="panel-a"></div>
+          </div>
+          <div class="tp tp-b">
+            <div class="tp-head tp-head-b">팀 B <span class="tp-cnt" id="cnt-b">(0/6)</span></div>
+            <div class="tp-body" id="panel-b"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="fl">점수</div>
+        <div class="scoreboard">
+          <div class="sc-team"><div class="sc-label sc-a">TEAM A</div><div class="sc-input"><input type="number" id="score-a" min="0" value="0"></div></div>
+          <div class="sc-div">:</div>
+          <div class="sc-team"><div class="sc-label sc-b">TEAM B</div><div class="sc-input"><input type="number" id="score-b" min="0" value="0"></div></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="fl">골 · 어시스트 <span style="text-transform:none;font-weight:500;color:var(--hint);">(선택)</span></div>
+        <div id="ga-inputs"></div>
+        <button class="btn btn-outline" onclick="addGA()" style="width:100%;margin-top:6px;">+ 추가</button>
+      </div>
+      <button class="btn btn-primary" onclick="saveGame()">경기 저장</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">경기 목록</div>
+      <div class="frow">
+        <select id="fy" onchange="renderLog()"><option value="">전체 연도</option></select>
+        <select id="fm" onchange="renderLog()"><option value="">전체 월</option></select>
+        <select id="fd" onchange="renderLog()"><option value="">전체 날짜</option></select>
+      </div>
+      <div id="game-log"></div>
+    </div>
+  </div>
+
+  <div id="tab-players" class="sec">
+    <div class="card">
+      <div class="card-title">선수 추가</div>
+      <div class="field"><input type="text" id="new-name" placeholder="선수 이름 입력"></div>
+      <button class="btn btn-primary" onclick="addPlayer()">추가</button>
+    </div>
+    <div class="card">
+      <div class="card-title">선수 목록 <span id="pcnt" style="font-size:14px;font-weight:500;color:var(--sub);"></span></div>
+      <div id="player-list"></div>
+    </div>
+  </div>
+
+  <div id="tab-stats" class="sec">
+    <div class="frow">
+      <select id="sy" onchange="renderStats()"><option value="">전체 연도</option></select>
+      <select id="sm" onchange="renderStats()"><option value="">전체 월</option></select>
+      <select id="sd" onchange="renderStats()"><option value="">전체 날짜</option></select>
+    </div>
+    <div class="stat-grid" id="stat-summary"></div>
+    <div class="card" style="overflow-x:auto;">
+      <div class="card-title">선수별 순위</div>
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>선수</th>
+            <th>경기</th>
+            <th>승</th>
+            <th>무</th>
+            <th>패</th>
+            <th style="cursor:pointer;user-select:none;" onclick="sortStats('points')">승점</th>
+            <th>승률</th>
+            <th>골</th>
+            <th>AS</th>
+          </tr>
+        </thead>
+        <tbody id="stats-body"></tbody>
+      </table>
+    </div>
+    <button class="mvp-btn" onclick="reqMvp()">MVP 추천받기 ✨</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// ★ Supabase 설정 (사용자 정보 유지)
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://qkbzjhqkyudvkjrdahun.supabase.co'; 
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrYnpqaHFreXVkdmtqcmRhaHVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDcwNTEsImV4cCI6MjA5MjMyMzA1MX0.qbwg432XfRAMdlA4A1VTPg6NRKjTi0HitVs9iA1Xbis'; 
+
+const SB = { url: SUPABASE_URL, key: SUPABASE_KEY };
+
+async function sbFetch(path, opts = {}) {
+  try {
+    const res = await fetch(`${SB.url}/rest/v1/${path}`, {
+      ...opts,
+      headers: {
+        'apikey': SB.key,
+        'Authorization': `Bearer ${SB.key}`,
+        'Content-Type': 'application/json',
+        'Prefer': opts.prefer || 'return=representation',
+        ...(opts.headers || {})
+      }
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
+  } catch (err) { throw err; }
+}
+
+let players = [], games = [];
+let attendees = [], attendConfirmed = false;
+let teamA = [], teamB = [];
+let pendingCb = null;
+let isOnline = false;
+
+// [수정1] 기본 정렬을 승점 내림차순으로 설정
+let currentSortCol = 'points';
+let currentSortDesc = true;
+
+async function init() {
+  setSyncStatus('load', '서버 연결 중...');
+  try {
+    const pData = await sbFetch('players?order=created_at');
+    players = pData || [];
+    const gData = await sbFetch('games?order=date,no');
+    games = gData || [];
+    isOnline = true;
+    setSyncStatus('ok', '실시간 연동됨');
+  } catch(e) {
+    players = JSON.parse(localStorage.getItem('fp') || '[]');
+    games = JSON.parse(localStorage.getItem('fg') || '[]');
+    setSyncStatus('err', '오프라인 모드');
+  }
+  updateFilters();
+  renderLog();
+  renderAttend();
+  renderPlayerList();
+  renderStats();
+  syncStatusFromServer();
+}
+
+async function syncStatusFromServer() {
+  const date = document.getElementById('game-date').value;
+  if (!isOnline || !date) return;
+  try {
+    const attData = await sbFetch(`attendance?date=eq.${date}`);
+    if (attData && attData.length > 0) {
+      attendees = attData[0].player_ids.map(id => isNaN(id) ? id : Number(id));
+      renderAttend();
+      attendConfirmed = true;
+      document.getElementById('sn1').className = 'sn done';
+      document.getElementById('sn1').textContent = '✓';
+      document.getElementById('step2-card').style.display = 'block';
+      document.getElementById('bench-info').innerHTML = `<div style="font-size:13px;color:var(--sub);margin-bottom:8px;font-weight:600;">오늘 참석자 ${attendees.length}명 (동기화됨)</div> <div>${attendees.map(id=>`<span class="btag">${pname(id)}</span>`).join('')}</div>`;
+      renderPanels();
+    }
+  } catch (e) {}
+}
+
+function setSyncStatus(state, msg) {
+  const dot = document.getElementById('sync-dot');
+  const msgEl = document.getElementById('sync-msg');
+  if (msgEl) msgEl.textContent = msg;
+  if (dot) dot.className = 'sync-dot ' + (state === 'ok' ? 'dot-ok' : state === 'err' ? 'dot-err' : 'dot-load');
+}
+
+function saveLocal() {
+  localStorage.setItem('fp', JSON.stringify(players));
+  localStorage.setItem('fg', JSON.stringify(games));
+}
+
+function showModal(title, msg, cb) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-msg').textContent = msg;
+  document.getElementById('modal').style.display = 'flex';
+  pendingCb = cb;
+}
+
+document.getElementById('modal-ok').addEventListener('click', () => {
+  document.getElementById('modal').style.display = 'none';
+  if (pendingCb) { pendingCb(); pendingCb = null; }
+});
+
+document.getElementById('modal-cancel').addEventListener('click', () => {
+  document.getElementById('modal').style.display = 'none';
+  pendingCb = null;
+});
+
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['record','players','stats'][i]===t));
+  document.querySelectorAll('.sec').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='stats') renderStats();
+  if(t==='players') renderPlayerList();
+}
+
+function pname(id) {
+  const p = players.find(x => String(x.id) === String(id));
+  return p ? p.name : '?';
+}
+
+function updateFilters() {
+  const dates = [...new Set(games.map(g => g.date))].sort().reverse();
+  const years = [...new Set(dates.map(d => d.slice(0,4)))];
+  const months = [...new Set(dates.map(d => d.slice(5,7)))];
+  ['fy','sy'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.innerHTML='<option value="">전체 연도</option>'+years.map(y=>`<option value="${y}">${y}년</option>`).join('');
+  });
+  ['fm','sm'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.innerHTML='<option value="">전체 월</option>'+months.sort().map(m=>`<option value="${m}">${parseInt(m)}월</option>`).join('');
+  });
+  ['fd','sd'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    el.innerHTML='<option value="">전체 날짜</option>'+dates.map(d=>`<option value="${d}">${d.slice(5)}</option>`).join('');
+  });
+}
+
+// [수정2] 참석자 칩 가나다순 + 용병 후순위 정렬
+function renderAttend() {
+  const list = [...players].sort((a, b) => {
+    const isYongA = a.name.includes('용병');
+    const isYongB = b.name.includes('용병');
+    if (isYongA && !isYongB) return 1;
+    if (!isYongA && isYongB) return -1;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+  const cont = document.getElementById('attend-chips');
+  if(!cont) return;
+  cont.innerHTML = list.map(p => {
+    const active = attendees.includes(p.id);
+    return `<div class="chip ${active?'on':''}" onclick="toggleAttend(${p.id})">${p.name}</div>`;
+  }).join('');
+  document.getElementById('att-cnt').querySelector('span').textContent = attendees.length;
+}
+
+function toggleAttend(id) {
+  if (attendConfirmed) return;
+  const idx = attendees.indexOf(id);
+  if (idx > -1) attendees.splice(idx, 1);
+  else attendees.push(id);
+  renderAttend();
+}
+
+function selAll() { attendees = players.map(p => p.id); renderAttend(); }
+function selNone() { attendees = []; renderAttend(); }
+
+async function confirmAttend() {
+  if (attendees.length < 2) return alert('참석자를 선택하세요.');
+  const date = document.getElementById('game-date').value;
+  if (isOnline) {
+    try {
+      await sbFetch('attendance', {
+        method: 'POST',
+        headers: { 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ date, player_ids: attendees })
+      });
+    } catch(e) {}
+  }
+  attendConfirmed = true;
+  document.getElementById('sn1').className = 'sn done';
+  document.getElementById('sn1').textContent = '✓';
+  document.getElementById('step2-card').style.display = 'block';
+  document.getElementById('bench-info').innerHTML = `<div style="font-size:13px;color:var(--sub);margin-bottom:8px;font-weight:600;">오늘 참석자 ${attendees.length}명</div> <div>${attendees.map(id=>`<span class="btag">${pname(id)}</span>`).join('')}</div>`;
+  renderPanels();
+}
+
+function resetAttend() {
+  if (!confirm('참석자를 다시 선택하시겠습니까?')) return;
+  attendConfirmed = false;
+  teamA = []; teamB = [];
+  document.getElementById('sn1').className = 'sn';
+  document.getElementById('sn1').textContent = '1';
+  document.getElementById('step2-card').style.display = 'none';
+  renderAttend();
+}
+
+function renderPanels() {
+  const panelA = document.getElementById('panel-a');
+  const panelB = document.getElementById('panel-b');
+  // [수정2-1] 팀 배정 목록도 정렬 적용
+  const list = attendees.map(id => ({ id, name: pname(id) })).sort((a, b) => {
+    const isYongA = a.name.includes('용병');
+    const isYongB = b.name.includes('용병');
+    if (isYongA && !isYongB) return 1;
+    if (!isYongA && isYongB) return -1;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+  const html = (team) => list.map(p => {
+    const inA = teamA.includes(p.id);
+    const inB = teamB.includes(p.id);
+    let cls = 'tp-chip';
+    if (team === 'A' && inA) cls += ' in-a';
+    if (team === 'B' && inB) cls += ' in-b';
+    if ((team === 'A' && inB) || (team === 'B' && inA)) cls += ' in-other';
+    return `<button class="${cls}" onclick="toggleTeam('${team}', ${p.id})">${p.name}</button>`;
+  }).join('');
+  panelA.innerHTML = html('A');
+  panelB.innerHTML = html('B');
+  document.getElementById('cnt-a').textContent = `(${teamA.length}/6)`;
+  document.getElementById('cnt-b').textContent = `(${teamB.length}/6)`;
+}
+
+function toggleTeam(team, id) {
+  if (team === 'A') {
+    if (teamB.includes(id)) return;
+    const idx = teamA.indexOf(id);
+    if (idx > -1) teamA.splice(idx, 1);
+    else if (teamA.length < 6) teamA.push(id);
+  } else {
+    if (teamA.includes(id)) return;
+    const idx = teamB.indexOf(id);
+    if (idx > -1) teamB.splice(idx, 1);
+    else if (teamB.length < 6) teamB.push(id);
+  }
+  renderPanels();
+}
+
+function addGA() {
+  const div = document.createElement('div');
+  div.className = 'ga-row';
+  const playersInMatch = [...teamA, ...teamB];
+  const options = playersInMatch.map(id => `<option value="${id}">${pname(id)}</option>`).join('');
+  div.innerHTML = `<select class="ga-p"><option value="">선수 선택</option>${options}</select><select class="ga-t"><option value="goal">골</option><option value="assist">AS</option></select><button class="btn btn-outline" onclick="this.parentElement.remove()" style="padding:10px;">✕</button>`;
+  document.getElementById('ga-inputs').appendChild(div);
+}
+
+async function saveGame() {
+  const date = document.getElementById('game-date').value;
+  const no = document.getElementById('game-no').value;
+  const sA = parseInt(document.getElementById('score-a').value);
+  const sB = parseInt(document.getElementById('score-b').value);
+  if (teamA.length === 0 || teamB.length === 0) return alert('팀 배정을 완료하세요.');
+  const ga = [];
+  document.querySelectorAll('.ga-row').forEach(row => {
+    const pid = row.querySelector('.ga-p').value;
+    const type = row.querySelector('.ga-t').value;
+    if (pid) ga.push({ player_id: Number(pid), type });
+  });
+  const gameData = { date, no, team_a: teamA, team_b: teamB, score_a: sA, score_b: sB, events: ga };
+  try {
+    if (isOnline) {
+      const res = await sbFetch('games', { method: 'POST', body: JSON.stringify(gameData) });
+      games.push(res[0]);
+    } else {
+      gameData.id = Date.now();
+      games.push(gameData);
+      saveLocal();
+    }
+    alert('저장되었습니다.');
+    document.getElementById('game-no').value = parseInt(no) + 1;
+    document.getElementById('score-a').value = 0; document.getElementById('score-b').value = 0;
+    document.getElementById('ga-inputs').innerHTML = '';
+    renderLog(); updateFilters();
+  } catch(e) { alert('실패'); }
+}
+
+function renderLog() {
+  const fy = document.getElementById('fy').value;
+  const fm = document.getElementById('fm').value;
+  const fd = document.getElementById('fd').value;
+  let filtered = games.filter(g => {
+    if (fy && !g.date.startsWith(fy)) return false;
+    if (fm && g.date.slice(5,7) !== fm) return false;
+    if (fd && g.date !== fd) return false;
+    return true;
+  }).sort((a,b) => b.date.localeCompare(a.date) || b.no - a.no);
+  const cont = document.getElementById('game-log');
+  if (filtered.length === 0) { cont.innerHTML = '<div class="empty">기록 없음</div>'; return; }
+  cont.innerHTML = filtered.map(g => `
+    <div class="gc">
+      <div class="gc-hdr"><div class="gc-date">${g.date} #${g.no}</div><button class="btn-danger" style="padding:4px 8px;font-size:11px;" onclick="delGame(${g.id})">삭제</button></div>
+      <div class="gc-row"><div class="gc-names" style="text-align:right;">${g.team_a.map(id=>pname(id)).join(', ')}</div><div class="gc-score">${g.score_a} : ${g.score_b}</div><div class="gc-names">${g.team_b.map(id=>pname(id)).join(', ')}</div></div>
+    </div>
+  `).join('');
+}
+
+function delGame(id) {
+  showModal('삭제', '삭제할까요?', async () => {
+    if (isOnline) await sbFetch(`games?id=eq.${id}`, { method: 'DELETE' });
+    games = games.filter(g => g.id !== id);
+    saveLocal(); renderLog(); renderStats();
+  });
+}
+
+async function addPlayer() {
+  const name = document.getElementById('new-name').value.trim();
+  if (!name) return;
+  if (isOnline) {
+    const res = await sbFetch('players', { method: 'POST', body: JSON.stringify({ name }) });
+    players.push(res[0]);
+  } else {
+    players.push({ id: Date.now(), name });
+    saveLocal();
+  }
+  document.getElementById('new-name').value = '';
+  renderPlayerList(); renderAttend();
+}
+
+// [수정3] 선수 목록 가나다순 + 용병 후순위 정렬
+function renderPlayerList() {
+  const cont = document.getElementById('player-list');
+  const sorted = [...players].sort((a, b) => {
+    const isYongA = a.name.includes('용병');
+    const isYongB = b.name.includes('용병');
+    if (isYongA && !isYongB) return 1;
+    if (!isYongA && isYongB) return -1;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+  document.getElementById('pcnt').textContent = `총 ${sorted.length}명`;
+  cont.innerHTML = sorted.map(p => `
+    <div class="pr"><div class="pi"><div class="pav">${p.name[0]}</div><div class="pn">${p.name}</div></div><button class="btn btn-outline" style="color:var(--loss);" onclick="delPlayer(${p.id},'${p.name}')">삭제</button></div>
+  `).join('');
+}
+
+function delPlayer(id, name) {
+  showModal('삭제', name + ' 삭제할까요?', async () => {
+    if (isOnline) await sbFetch(`players?id=eq.${id}`, { method: 'DELETE' });
+    players = players.filter(p => p.id !== id);
+    saveLocal(); renderPlayerList(); renderAttend();
+  });
+}
+
+function sortStats(col) {
+  if (currentSortCol === col) currentSortDesc = !currentSortDesc;
+  else { currentSortCol = col; currentSortDesc = true; }
+  renderStats();
+}
+
+// [수정4] 승률 계산 및 정렬 로직
+function renderStats() {
+  const sy = document.getElementById('sy').value;
+  const sm = document.getElementById('sm').value;
+  const sd = document.getElementById('sd').value;
+  const fGames = games.filter(g => {
+    if (sy && !g.date.startsWith(sy)) return false;
+    if (sm && g.date.slice(5,7) !== sm) return false;
+    if (sd && g.date !== sd) return false;
+    return true;
+  });
+  const smap = {};
+  players.forEach(p => smap[p.id] = { id: p.id, name: p.name, games:0, wins:0, draws:0, losses:0, points:0, goals:0, assists:0 });
+  fGames.forEach(g => {
+    const winSide = g.score_a > g.score_b ? 'A' : (g.score_a < g.score_b ? 'B' : 'D');
+    g.team_a.forEach(pid => {
+      if(!smap[pid]) return; smap[pid].games++;
+      if(winSide==='A'){ smap[pid].wins++; smap[pid].points+=2; } else if(winSide==='D'){ smap[pid].draws++; smap[pid].points+=1; } else smap[pid].losses++;
+    });
+    g.team_b.forEach(pid => {
+      if(!smap[pid]) return; smap[pid].games++;
+      if(winSide==='B'){ smap[pid].wins++; smap[pid].points+=2; } else if(winSide==='D'){ smap[pid].draws++; smap[pid].points+=1; } else smap[pid].losses++;
+    });
+    (g.events||[]).forEach(e=>{ if(smap[e.player_id]){ if(e.type==='goal') smap[e.player_id].goals++; else smap[e.player_id].assists++; }});
+  });
+  let sArr = Object.values(smap).filter(s => s.games > 0);
+  // 정렬 로직 (기본 승점 내림차순)
+  sArr.sort((a, b) => currentSortDesc ? b[currentSortCol] - a[currentSortCol] : a[currentSortCol] - b[currentSortCol]);
+
+  document.getElementById('stats-body').innerHTML = sArr.map((s, i) => {
+    const winRate = s.games > 0 ? Math.round((s.wins / s.games) * 100) : 0;
+    return `<tr><td>${i+1}</td><td>${s.name}</td><td>${s.games}</td><td>${s.wins}</td><td>${s.draws}</td><td>${s.losses}</td><td><span class="pts">${s.points}</span></td><td>${winRate}%</td><td>${s.goals}</td><td>${s.assists}</td></tr>`;
+  }).join('');
+}
+
+function reqMvp() { alert('기능 준비 중'); }
+
+document.getElementById('game-date').value = new Date().toISOString().slice(0,10);
+init();
+</script>
+</body>
+</html>
