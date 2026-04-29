@@ -827,7 +827,7 @@ function renderStats() {
 
   // 경기 참석한 모든 선수 표시 (승점 없어도 포함)
   let sorted = [...rows].filter(r=>r.games>0);
-  sorted.sort((a,b) => sortDir * (b[sortKey] - a[sortKey]));
+  sorted.sort((a,b) => sortDir * (a[sortKey] - b[sortKey]));
 
   // 정렬 화살표 업데이트
   ['games','wins','draws','losses','points','goals','assists'].forEach(k=>{
