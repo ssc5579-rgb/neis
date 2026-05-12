@@ -168,10 +168,28 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 .dot-load { background:#fbbf24; animation:pulse 1s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-/* 경기번호 입력 좁게 */
-.game-no-row { display:flex; align-items:center; gap:10px; }
-.game-no-row input { width:70px; flex:none; text-align:center; }
-.game-no-row span { font-size:15px; color:var(--sub); }
+/* MVP 탭 */
+.mvp-candidate { display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; padding:12px 8px; border-radius:var(--rs); border:1.5px solid var(--border); background:#F9FAFB; transition:all .15s; user-select:none; }
+.mvp-candidate:active { transform:scale(.96); }
+.mvp-candidate.voted { border-color:var(--blue); background:#DBEAFE; }
+.mvp-candidate.self { opacity:.35; cursor:not-allowed; }
+.mvp-av { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--blue),var(--blue-dark)); display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:700; }
+.mvp-av.gold { background:linear-gradient(135deg,#F59E0B,#B45309); }
+.mvp-name { font-size:14px; font-weight:600; color:var(--text); }
+.mvp-vcnt { font-size:12px; font-weight:700; color:var(--blue); }
+.mvp-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.mvp-bar-wrap { margin-top:4px; height:4px; background:var(--border); border-radius:4px; width:100%; }
+.mvp-bar { height:4px; border-radius:4px; background:linear-gradient(90deg,var(--blue),var(--blue-dark)); transition:width .4s; }
+.mvp-crown { font-size:22px; line-height:1; }
+.mvp-result-card { background:linear-gradient(135deg,#0F172A,#1E293B); border-radius:var(--r); padding:20px 16px; margin-bottom:12px; color:#fff; text-align:center; }
+.mvp-result-name { font-size:26px; font-weight:800; margin:8px 0 4px; }
+.mvp-result-votes { font-size:14px; color:#94A3B8; }
+.mvp-history-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
+.mvp-history-row:last-child { border-bottom:none; }
+
+/* 탭 4개일 때 폰트 살짝 조정 */
+.tab { font-size:12px; }
+
 </style>
 </head>
 <body>
@@ -201,6 +219,7 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
     <button class="tab active" onclick="switchTab('record')">경기 기록</button>
     <button class="tab" onclick="switchTab('players')">선수 관리</button>
     <button class="tab" onclick="switchTab('stats')">통계</button>
+    <button class="tab" onclick="switchTab('mvp')">🏆 MVP</button>
   </div>
 
   <div id="tab-record" class="sec active">
@@ -313,6 +332,37 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
     </div>
 
   </div>
+
+  <!-- MVP 탭 -->
+  <div id="tab-mvp" class="sec">
+
+    <!-- 나는 누구? -->
+    <div class="card" id="mvp-identity-card">
+      <div class="card-title">👤 나는 누구?</div>
+      <p style="font-size:14px;color:var(--sub);margin-bottom:12px;">투표 전에 먼저 본인을 선택해주세요.</p>
+      <div class="chips" id="mvp-identity-chips"></div>
+      <div id="mvp-identity-chosen" style="display:none;margin-top:10px;">
+        <div style="font-size:14px;color:var(--blue);font-weight:700;" id="mvp-identity-label"></div>
+        <button class="btn btn-outline" style="margin-top:8px;padding:8px 14px;font-size:13px;" onclick="resetIdentity()">다시 선택</button>
+      </div>
+    </div>
+
+    <!-- 날짜 선택 -->
+    <div class="card">
+      <div class="card-title">📅 투표할 날짜</div>
+      <select id="mvp-date-sel" onchange="renderMvpTab()" style="width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:16px;font-family:inherit;color:var(--text);background:#F9FAFB;outline:none;-webkit-appearance:none;">
+        <option value="">날짜를 선택하세요</option>
+      </select>
+    </div>
+
+    <!-- 투표 영역 -->
+    <div id="mvp-vote-area"></div>
+
+    <!-- MVP 결과 -->
+    <div id="mvp-result-area"></div>
+
+  </div>
+
 </div>
 
 <script>
@@ -382,6 +432,7 @@ async function init() {
   }
   
   updateFilters(); 
+  updateMvpDateSel();
   renderLog(); 
   renderAttend(); 
   renderPlayerList();
@@ -450,12 +501,13 @@ document.getElementById('modal-cancel').addEventListener('click', () => {
 });
 
 function switchTab(t) {
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['record','players','stats'][i]===t));
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['record','players','stats','mvp'][i]===t));
   document.querySelectorAll('.sec').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   if(t==='stats') renderStats();
   if(t==='players') renderPlayerList();
   if(t==='record') { renderLog(); renderAttend(); }
+  if(t==='mvp') renderMvpTab();
 }
 
 function pname(id) { 
@@ -856,7 +908,268 @@ function renderStats() {
 
 
 
-const dateEl = document.getElementById('game-date');
+// ══════════════════════════════════════════
+// MVP 투표
+// ══════════════════════════════════════════
+let myIdentityId = null; // 현재 사용자가 선택한 자신의 player id
+let mvpVotes = [];       // Supabase에서 불러온 투표 목록
+
+// 내 정체 선택 칩 렌더
+function renderIdentityChips() {
+  const el = document.getElementById('mvp-identity-chips'); 
+  if (!el) return;
+  el.innerHTML = '';
+  sortPlayers(players).forEach(p => {
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = p.name;
+    c.addEventListener('click', () => selectIdentity(p.id, p.name));
+    el.appendChild(c);
+  });
+}
+
+function selectIdentity(id, name) {
+  myIdentityId = id;
+  localStorage.setItem('mvp_my_id', String(id));
+  document.getElementById('mvp-identity-chips').style.display = 'none';
+  const chosen = document.getElementById('mvp-identity-chosen');
+  chosen.style.display = 'block';
+  document.getElementById('mvp-identity-label').textContent = `✅ ${name} 으로 투표합니다`;
+  renderMvpVoteArea();
+  renderMvpResult();
+}
+
+function resetIdentity() {
+  myIdentityId = null;
+  localStorage.removeItem('mvp_my_id');
+  document.getElementById('mvp-identity-chips').style.display = 'flex';
+  document.getElementById('mvp-identity-chips').style.flexWrap = 'wrap';
+  document.getElementById('mvp-identity-chips').style.gap = '8px';
+  document.getElementById('mvp-identity-chosen').style.display = 'none';
+  document.getElementById('mvp-vote-area').innerHTML = '';
+}
+
+// 날짜 선택 드롭다운 동기화
+function updateMvpDateSel() {
+  const sel = document.getElementById('mvp-date-sel');
+  if (!sel) return;
+  const cur = sel.value;
+  const dates = [...new Set(games.map(g => g.date).filter(Boolean))].sort().reverse();
+  sel.innerHTML = '<option value="">날짜를 선택하세요</option>' +
+    dates.map(d => `<option value="${d}"${d === cur ? ' selected' : ''}>${d}</option>`).join('');
+  // 날짜가 하나도 없으면 오늘 날짜의 attendance 기준으로 자동 선택
+  if (!cur && dates.length > 0) sel.value = dates[0];
+}
+
+async function loadMvpVotes(date) {
+  if (!isOnline || !date) return;
+  try {
+    const data = await sbFetch(`mvp_votes?date=eq.${date}`);
+    mvpVotes = data || [];
+  } catch(e) {
+    console.warn('MVP 투표 불러오기 실패:', e.message);
+    mvpVotes = [];
+  }
+}
+
+async function renderMvpTab() {
+  updateMvpDateSel();
+  renderIdentityChips();
+
+  // 로컬 저장된 내 id 복원
+  if (!myIdentityId) {
+    const saved = localStorage.getItem('mvp_my_id');
+    if (saved) {
+      const p = players.find(x => String(x.id) === saved);
+      if (p) selectIdentity(p.id, p.name);
+    }
+  } else {
+    // 이미 선택돼 있으면 chips 숨기기
+    document.getElementById('mvp-identity-chips').style.display = 'none';
+    document.getElementById('mvp-identity-chosen').style.display = 'block';
+    const p = players.find(x => String(x.id) === String(myIdentityId));
+    if (p) document.getElementById('mvp-identity-label').textContent = `✅ ${p.name} 으로 투표합니다`;
+  }
+
+  const date = document.getElementById('mvp-date-sel')?.value;
+  await loadMvpVotes(date);
+  renderMvpVoteArea();
+  renderMvpResult();
+}
+
+function getMvpCandidates(date) {
+  // 해당 날짜 경기에 출전한 모든 선수
+  const dayGames = games.filter(g => g.date === date);
+  const ids = new Set();
+  dayGames.forEach(g => {
+    gTeamA(g).forEach(id => ids.add(String(id)));
+    gTeamB(g).forEach(id => ids.add(String(id)));
+  });
+  // attendance에서 보완
+  return [...ids].map(id => players.find(p => String(p.id) === id)).filter(Boolean);
+}
+
+function renderMvpVoteArea() {
+  const el = document.getElementById('mvp-vote-area');
+  if (!el) return;
+  const date = document.getElementById('mvp-date-sel')?.value;
+  if (!date) { el.innerHTML = ''; return; }
+  if (!myIdentityId) { el.innerHTML = ''; return; }
+
+  const candidates = getMvpCandidates(date);
+  if (!candidates.length) {
+    el.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">⚽</div>해당 날짜의 경기 기록이 없어요</div></div>`;
+    return;
+  }
+
+  // 내가 이미 투표했는지 확인
+  const myVote = mvpVotes.find(v => String(v.voter_id) === String(myIdentityId) && v.date === date);
+  
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">🗳️ ${date} MVP 투표</div>
+      <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">
+        ${myVote ? `✅ <strong>${pname(myVote.candidate_id)}</strong>에게 투표했어요. 변경하려면 다시 선택하세요.` : '오늘 가장 잘한 선수에게 투표하세요! (본인 투표 불가)'}
+      </p>
+      <div class="mvp-grid" id="mvp-candidate-grid"></div>
+    </div>
+  `;
+
+  const grid = document.getElementById('mvp-candidate-grid');
+  candidates.forEach(p => {
+    const isSelf = String(p.id) === String(myIdentityId);
+    const isVoted = myVote && String(myVote.candidate_id) === String(p.id);
+    const div = document.createElement('div');
+    div.className = 'mvp-candidate' + (isVoted ? ' voted' : '') + (isSelf ? ' self' : '');
+    div.innerHTML = `
+      <div class="mvp-av">${p.name.charAt(0)}</div>
+      <div class="mvp-name">${p.name}</div>
+      ${isVoted ? '<div class="mvp-vcnt">✓ 내 선택</div>' : (isSelf ? '<div style="font-size:11px;color:var(--hint);">본인</div>' : '')}
+    `;
+    if (!isSelf) div.addEventListener('click', () => castVote(date, p.id));
+    grid.appendChild(div);
+  });
+}
+
+async function castVote(date, candidateId) {
+  if (!myIdentityId) { alert('먼저 본인을 선택해주세요'); return; }
+  if (String(candidateId) === String(myIdentityId)) { alert('본인에게는 투표할 수 없어요'); return; }
+
+  const existingVote = mvpVotes.find(v => String(v.voter_id) === String(myIdentityId) && v.date === date);
+
+  if (!isOnline) { alert('오프라인 상태에서는 투표할 수 없어요'); return; }
+
+  try {
+    if (existingVote) {
+      // 기존 투표 수정
+      await sbFetch(`mvp_votes?id=eq.${existingVote.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ candidate_id: candidateId })
+      });
+    } else {
+      // 신규 투표
+      await sbFetch('mvp_votes', {
+        method: 'POST',
+        body: JSON.stringify({ date, voter_id: myIdentityId, candidate_id: candidateId })
+      });
+    }
+    await loadMvpVotes(date);
+    renderMvpVoteArea();
+    renderMvpResult();
+  } catch(e) {
+    alert('투표 저장 실패: ' + e.message);
+  }
+}
+
+function renderMvpResult() {
+  const el = document.getElementById('mvp-result-area');
+  if (!el) return;
+  const date = document.getElementById('mvp-date-sel')?.value;
+  if (!date || !mvpVotes.length) { el.innerHTML = ''; return; }
+
+  // 날짜별 집계
+  const tally = {};
+  mvpVotes.filter(v => v.date === date).forEach(v => {
+    const cid = String(v.candidate_id);
+    tally[cid] = (tally[cid] || 0) + 1;
+  });
+
+  const totalVotes = Object.values(tally).reduce((a, b) => a + b, 0);
+  if (!totalVotes) { el.innerHTML = ''; return; }
+
+  const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  const maxV = sorted[0][1];
+  const winner = players.find(p => String(p.id) === sorted[0][0]);
+
+  let resultHtml = `
+    <div class="mvp-result-card">
+      <div class="mvp-crown">👑</div>
+      <div class="mvp-result-name">${winner ? winner.name : '?'}</div>
+      <div class="mvp-result-votes">${sorted[0][1]}표 · 총 ${totalVotes}명 투표</div>
+    </div>
+    <div class="card">
+      <div class="card-title">전체 득표 현황</div>
+  `;
+
+  sorted.forEach(([cid, cnt], i) => {
+    const p = players.find(x => String(x.id) === cid);
+    const pct = Math.round(cnt / totalVotes * 100);
+    const isFirst = i === 0;
+    resultHtml += `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="mvp-av${isFirst ? ' gold' : ''}" style="width:32px;height:32px;font-size:14px;">${p ? p.name.charAt(0) : '?'}</div>
+            <span style="font-size:14px;font-weight:600;color:var(--text);">${p ? p.name : '?'}</span>
+            ${isFirst ? '<span style="font-size:12px;">👑</span>' : ''}
+          </div>
+          <span style="font-size:14px;font-weight:700;color:var(--blue);">${cnt}표 (${pct}%)</span>
+        </div>
+        <div class="mvp-bar-wrap"><div class="mvp-bar" style="width:${Math.round(cnt/maxV*100)}%"></div></div>
+      </div>
+    `;
+  });
+  resultHtml += '</div>';
+
+  // 역대 MVP 통계
+  const allTally = {};
+  mvpVotes.forEach(v => {
+    // 날짜별 최다 득표자만 MVP로 인정
+    const dayVotes = mvpVotes.filter(x => x.date === v.date);
+    const dayTally = {};
+    dayVotes.forEach(dv => { dayTally[String(dv.candidate_id)] = (dayTally[String(dv.candidate_id)] || 0) + 1; });
+    const dayMax = Math.max(...Object.values(dayTally));
+    const dayWinners = Object.entries(dayTally).filter(([,c]) => c === dayMax).map(([id]) => id);
+    dayWinners.forEach(id => { allTally[id] = (allTally[id] || 0) + 1; });
+  });
+  const allDates = [...new Set(Object.values(allTally).length ? Object.keys(allTally).map(() => '') : [])];
+  const allSorted = Object.entries(allTally).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  if (allSorted.length) {
+    resultHtml += `
+      <div class="card">
+        <div class="card-title">🏆 역대 MVP 순위</div>
+        ${allSorted.map(([cid, cnt], i) => {
+          const p = players.find(x => String(x.id) === cid);
+          const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+          return `
+            <div class="mvp-history-row">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:20px;">${medals[i]||'·'}</span>
+                <span style="font-size:15px;font-weight:600;color:var(--text);">${p ? p.name : '?'}</span>
+              </div>
+              <span style="font-size:14px;font-weight:700;color:var(--blue);">MVP ${cnt}회</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  el.innerHTML = resultHtml;
+}
+
+
 if (dateEl) {
   dateEl.value = new Date().toISOString().slice(0,10);
   dateEl.addEventListener('change', () => {
