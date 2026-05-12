@@ -1170,6 +1170,7 @@ function renderMvpResult() {
 }
 
 
+const dateEl = document.getElementById('game-date');
 if (dateEl) {
   dateEl.value = new Date().toISOString().slice(0,10);
   dateEl.addEventListener('change', () => {
