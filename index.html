@@ -1022,14 +1022,19 @@ function renderMvpVoteArea() {
     return;
   }
 
-  // 내가 이미 투표했는지 확인
-  const myVote = mvpVotes.find(v => String(v.voter_id) === String(myIdentityId) && v.date === date);
-  
+  // 내가 이미 투표한 목록 (최대 3명)
+  const myVotes = mvpVotes.filter(v => String(v.voter_id) === String(myIdentityId) && v.date === date);
+  const myVotedIds = myVotes.map(v => String(v.candidate_id));
+  const voteCount = myVotes.length;
+  const maxVotes = 3;
+
   el.innerHTML = `
     <div class="card">
       <div class="card-title">🗳️ ${date} MVP 투표</div>
       <p style="font-size:13px;color:var(--sub);margin-bottom:14px;">
-        ${myVote ? `✅ <strong>${pname(myVote.candidate_id)}</strong>에게 투표했어요. 변경하려면 다시 선택하세요.` : '오늘 가장 잘한 선수에게 투표하세요! (본인 투표 불가)'}
+        자기 빼고 최대 3명 선택 가능 · 선택한 선수를 다시 누르면 취소돼요<br>
+        <span style="color:var(--blue);font-weight:700;">${voteCount}/${maxVotes}명 선택됨</span>
+        ${myVotedIds.length ? ' · ' + myVotedIds.map(id => pname(id)).join(', ') : ''}
       </p>
       <div class="mvp-grid" id="mvp-candidate-grid"></div>
     </div>
@@ -1038,13 +1043,14 @@ function renderMvpVoteArea() {
   const grid = document.getElementById('mvp-candidate-grid');
   candidates.forEach(p => {
     const isSelf = String(p.id) === String(myIdentityId);
-    const isVoted = myVote && String(myVote.candidate_id) === String(p.id);
+    const isVoted = myVotedIds.includes(String(p.id));
+    const isFull = !isVoted && voteCount >= maxVotes;
     const div = document.createElement('div');
-    div.className = 'mvp-candidate' + (isVoted ? ' voted' : '') + (isSelf ? ' self' : '');
+    div.className = 'mvp-candidate' + (isVoted ? ' voted' : '') + (isSelf || isFull ? ' self' : '');
     div.innerHTML = `
       <div class="mvp-av">${p.name.charAt(0)}</div>
       <div class="mvp-name">${p.name}</div>
-      ${isVoted ? '<div class="mvp-vcnt">✓ 내 선택</div>' : (isSelf ? '<div style="font-size:11px;color:var(--hint);">본인</div>' : '')}
+      ${isVoted ? '<div class="mvp-vcnt">✓ 선택</div>' : (isSelf ? '<div style="font-size:11px;color:var(--hint);">본인</div>' : '')}
     `;
     if (!isSelf) div.addEventListener('click', () => castVote(date, p.id));
     grid.appendChild(div);
@@ -1054,20 +1060,21 @@ function renderMvpVoteArea() {
 async function castVote(date, candidateId) {
   if (!myIdentityId) { alert('먼저 본인을 선택해주세요'); return; }
   if (String(candidateId) === String(myIdentityId)) { alert('본인에게는 투표할 수 없어요'); return; }
-
-  const existingVote = mvpVotes.find(v => String(v.voter_id) === String(myIdentityId) && v.date === date);
-
   if (!isOnline) { alert('오프라인 상태에서는 투표할 수 없어요'); return; }
+
+  const myVotes = mvpVotes.filter(v => String(v.voter_id) === String(myIdentityId) && v.date === date);
+  const existingVote = myVotes.find(v => String(v.candidate_id) === String(candidateId));
 
   try {
     if (existingVote) {
-      // 기존 투표 수정
+      // 이미 투표한 사람 → 취소
       await sbFetch(`mvp_votes?id=eq.${existingVote.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ candidate_id: candidateId })
+        method: 'DELETE',
+        prefer: 'return=minimal'
       });
     } else {
-      // 신규 투표
+      // 새로 투표
+      if (myVotes.length >= 3) { alert('최대 3명까지만 선택할 수 있어요'); return; }
       await sbFetch('mvp_votes', {
         method: 'POST',
         body: JSON.stringify({ date, voter_id: myIdentityId, candidate_id: candidateId })
