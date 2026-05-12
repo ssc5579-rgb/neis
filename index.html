@@ -1138,19 +1138,33 @@ function renderMvpResult() {
   });
   resultHtml += '</div>';
 
-  // 역대 MVP 통계
+  // 역대 MVP 통계 — 날짜별로 딱 한 번만 집계, 동점이면 공동 MVP
   const allTally = {};
-  mvpVotes.forEach(v => {
-    // 날짜별 최다 득표자만 MVP로 인정
-    const dayVotes = mvpVotes.filter(x => x.date === v.date);
+  const allDates = [...new Set(mvpVotes.map(v => v.date))];
+  allDates.forEach(d => {
+    const dayVotes = mvpVotes.filter(x => x.date === d);
     const dayTally = {};
     dayVotes.forEach(dv => { dayTally[String(dv.candidate_id)] = (dayTally[String(dv.candidate_id)] || 0) + 1; });
     const dayMax = Math.max(...Object.values(dayTally));
     const dayWinners = Object.entries(dayTally).filter(([,c]) => c === dayMax).map(([id]) => id);
     dayWinners.forEach(id => { allTally[id] = (allTally[id] || 0) + 1; });
   });
-  const allDates = [...new Set(Object.values(allTally).length ? Object.keys(allTally).map(() => '') : [])];
   const allSorted = Object.entries(allTally).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  // 오늘 날짜 공동 MVP 표시용
+  const todayWinners = (() => {
+    if (!totalVotes) return [];
+    const maxV2 = Math.max(...Object.values(tally));
+    return Object.entries(tally).filter(([,c]) => c === maxV2).map(([id]) => id);
+  })();
+  const isShared = todayWinners.length > 1;
+
+  // MVP 카드 상단 재구성 (공동 MVP 반영)
+  const mvpCardEl = el.querySelector('.mvp-result-card');
+  if (mvpCardEl) {
+    mvpCardEl.querySelector('.mvp-result-name').textContent = todayWinners.map(id => { const p = players.find(x => String(x.id) === id); return p ? p.name : '?'; }).join(' · ');
+    mvpCardEl.querySelector('.mvp-result-votes').textContent = (isShared ? '🤝 공동 MVP · ' : '') + sorted[0][1] + '표 · 총 ' + totalVotes + '명 투표';
+  }
 
   if (allSorted.length) {
     resultHtml += `
