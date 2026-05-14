@@ -341,6 +341,37 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 
   </div>
 
+  <!-- 경기 수정 모달 -->
+  <div class="modal" id="edit-modal" style="display:none;background:rgba(0,0,0,0.75)">
+    <div class="modal-box" style="width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+      <h3 style="margin-bottom:16px;">✏️ 경기 수정</h3>
+      <div class="card-title" style="margin-bottom:8px;">팀 배정</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:6px;">팀 A</div>
+          <div id="edit-panel-a" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#F97316;margin-bottom:6px;">팀 B</div>
+          <div id="edit-panel-b" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+      </div>
+      <div class="card-title" style="margin-bottom:8px;">스코어</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <input type="number" id="edit-score-a" min="0" max="99" value="0" readonly style="width:64px;text-align:center;padding:10px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:20px;font-weight:700;background:#F3F4F6;">
+        <span style="font-size:20px;color:var(--sub);">:</span>
+        <input type="number" id="edit-score-b" min="0" max="99" value="0" readonly style="width:64px;text-align:center;padding:10px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:20px;font-weight:700;background:#F3F4F6;">
+      </div>
+      <div class="card-title" style="margin-bottom:8px;">골 · 어시스트</div>
+      <div id="edit-ga-inputs" style="margin-bottom:16px;"></div>
+      <button class="btn btn-outline" style="width:100%;margin-bottom:16px;" onclick="addEditGaRow()">+ 골/어시스트 추가</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-outline" style="flex:1;" onclick="closeEditModal()">취소</button>
+        <button class="btn btn-primary" style="flex:2;" onclick="saveEditGame()">저장</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MVP 탭 -->
   <div id="tab-mvp" class="sec">
 
@@ -848,6 +879,138 @@ async function saveGame() {
   alert(`${no}번째 경기 저장됐어요!`);
 }
 
+let editGameId = null;
+let editTeamA = [], editTeamB = [];
+
+function openEditModal(id) {
+  const g = games.find(x => String(x.id) === String(id));
+  if (!g) return;
+  editGameId = id;
+  editTeamA = [...gTeamA(g)];
+  editTeamB = [...gTeamB(g)];
+
+  document.getElementById('edit-score-a').value = gScoreA(g);
+  document.getElementById('edit-score-b').value = gScoreB(g);
+
+  // 골/어시스트 불러오기
+  const gaEl = document.getElementById('edit-ga-inputs');
+  gaEl.innerHTML = '';
+  const goals = gGoals(g);
+  const assists = gAssists(g);
+  const maxRows = Math.max(goals.length, assists.length, 1);
+  for (let i = 0; i < maxRows; i++) {
+    addEditGaRow(goals[i] || '', assists[i] || '');
+  }
+
+  renderEditPanels();
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function renderEditPanels() {
+  ['a','b'].forEach(t => {
+    const el = document.getElementById('edit-panel-'+t);
+    el.innerHTML = '';
+    const myTeam = t==='a' ? editTeamA : editTeamB;
+    const otherTeam = t==='a' ? editTeamB : editTeamA;
+    const g = games.find(x => String(x.id) === String(editGameId));
+    const dayPlayers = new Set();
+    if (g) {
+      gTeamA(g).forEach(id => dayPlayers.add(String(id)));
+      gTeamB(g).forEach(id => dayPlayers.add(String(id)));
+    }
+    // 그날 참석자도 포함
+    attendees.forEach(id => dayPlayers.add(String(id)));
+
+    [...dayPlayers].forEach(id => {
+      const inMe = myTeam.some(tid => String(tid) === String(id));
+      const inOther = otherTeam.some(tid => String(tid) === String(id));
+      if (inOther) return;
+      const btn = document.createElement('button');
+      btn.className = 'tp-chip' + (inMe ? (t==='a' ? ' in-a' : ' in-b') : '');
+      btn.textContent = (inMe ? '✓ ' : '') + pname(id);
+      btn.addEventListener('click', () => {
+        if (t==='a') {
+          editTeamA.some(tid=>String(tid)===String(id)) ? editTeamA=editTeamA.filter(x=>String(x)!==String(id)) : (editTeamA.length<6?editTeamA.push(id):alert('팀당 최대 6명이에요'));
+        } else {
+          editTeamB.some(tid=>String(tid)===String(id)) ? editTeamB=editTeamB.filter(x=>String(x)!==String(id)) : (editTeamB.length<6?editTeamB.push(id):alert('팀당 최대 6명이에요'));
+        }
+        renderEditPanels();
+      });
+      el.appendChild(btn);
+    });
+  });
+}
+
+function calcEditScore() {
+  const goals = [...document.querySelectorAll('.edit-goal-sel')].map(s=>s.value).filter(Boolean);
+  const sA = goals.filter(id => editTeamA.some(tid => String(tid) === String(id))).length;
+  const sB = goals.filter(id => editTeamB.some(tid => String(tid) === String(id))).length;
+  document.getElementById('edit-score-a').value = sA;
+  document.getElementById('edit-score-b').value = sB;
+}
+
+function addEditGaRow(goal='', assist='') {
+  const el = document.getElementById('edit-ga-inputs');
+  const row = document.createElement('div');
+  row.className = 'ga-row';
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+  row.innerHTML = `
+    <select class="edit-goal-sel" style="flex:1;padding:10px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:14px;background:#F9FAFB;">
+      <option value="">골 없음</option>
+      ${players.map(p=>`<option value="${p.id}" ${String(p.id)===String(goal)?'selected':''}>${p.name}</option>`).join('')}
+    </select>
+    <select class="edit-assist-sel" style="flex:1;padding:10px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:14px;background:#F9FAFB;">
+      <option value="">어시스트 없음</option>
+      ${players.map(p=>`<option value="${p.id}" ${String(p.id)===String(assist)?'selected':''}>${p.name}</option>`).join('')}
+    </select>
+    <button onclick="this.parentElement.remove();calcEditScore();" style="padding:8px;background:none;border:none;font-size:18px;color:var(--sub);cursor:pointer;">✕</button>
+  `;
+  row.querySelector('.edit-goal-sel').addEventListener('change', calcEditScore);
+  el.appendChild(row);
+  calcEditScore();
+}
+
+async function saveEditGame() {
+  const g = games.find(x => String(x.id) === String(editGameId));
+  if (!g) return;
+
+  const goals = [...document.querySelectorAll('.edit-goal-sel')].map(s=>s.value).filter(Boolean);
+  const sA = goals.filter(id => editTeamA.some(tid => String(tid) === String(id))).length;
+  const sB = goals.filter(id => editTeamB.some(tid => String(tid) === String(id))).length;
+  const rA = sA > sB ? 'win' : sA < sB ? 'loss' : 'draw';
+  const assists = [...document.querySelectorAll('.edit-assist-sel')].map(s=>s.value).filter(Boolean);
+
+  const updated = {
+    team_a: editTeamA,
+    team_b: editTeamB,
+    score_a: sA,
+    score_b: sB,
+    result_a: rA,
+    goals,
+    assists
+  };
+
+  try {
+    await sbFetch(`games?id=eq.${editGameId}`, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify(updated)
+    });
+    const idx = games.findIndex(x => String(x.id) === String(editGameId));
+    if (idx !== -1) games[idx] = { ...games[idx], ...updated };
+    closeEditModal();
+    renderLog();
+    renderStats();
+  } catch(e) {
+    alert('수정 실패: ' + e.message);
+  }
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+  editGameId = null; editTeamA = []; editTeamB = [];
+}
+
 async function deleteGame(id) {
   const g = games.find(x=>String(x.id)===String(id));
   showModal('경기 삭제', `${g.date} ${g.no}번째 경기를 삭제할까요?`, async () => {
@@ -947,8 +1110,12 @@ function renderLog() {
         ${goalText||assistText?`<div class="gc-gi">${goalText}${goalText&&assistText?' · ':''}${assistText}</div>`:''}
       `;
       const hdr=card.querySelector('.gc-hdr');
+      const btnWrap=document.createElement('div'); btnWrap.style.cssText='display:flex;gap:6px;';
+      const edit=document.createElement('button'); edit.className='btn btn-outline'; edit.textContent='수정'; edit.style.cssText='padding:6px 14px;font-size:13px;';
+      edit.addEventListener('click',()=>openEditModal(g.id));
       const del=document.createElement('button'); del.className='btn btn-danger'; del.textContent='삭제'; del.style.cssText='padding:6px 14px;font-size:13px;';
-      del.addEventListener('click',()=>deleteGame(g.id)); hdr.appendChild(del);
+      del.addEventListener('click',()=>deleteGame(g.id));
+      btnWrap.appendChild(edit); btnWrap.appendChild(del); hdr.appendChild(btnWrap);
       body.appendChild(card);
     });
 
