@@ -473,7 +473,8 @@ async function syncStatusFromServer() {
       document.getElementById('step2-card').style.display = 'block';
       document.getElementById('bench-info').innerHTML =
         `<div style="font-size:13px;color:var(--sub);margin-bottom:8px;font-weight:600;">오늘 참석자 ${attendees.length}명</div>
-         <div>${attendees.map(id=>`<span class="btag">${pname(id)}</span>`).join('')}</div>`;
+         <div>${attendees.map(id=>`<span class="btag">${pname(id)}</span>`).join('')}</div>
+         <button class="btn btn-outline" style="margin-top:10px;padding:8px 14px;font-size:13px;" onclick="cancelAttend()">참석자 확정 취소</button>`;
       renderPanels();
     }
 
