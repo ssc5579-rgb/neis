@@ -1,6 +1,6 @@
 {
-  "name": "풋살 성적 기록",
-  "short_name": "풋살기록",
+  "name": "FC NEIS",
+  "short_name": "FC NEIS",
   "description": "팀 매치 · 골 · 어시스트 트래커",
   "start_url": "./index.html",
   "display": "standalone",
