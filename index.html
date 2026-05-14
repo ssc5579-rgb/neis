@@ -1123,7 +1123,16 @@ function renderStats() {
   // 경기 참석한 모든 선수 표시 (승점 없어도 포함)
   let sorted = [...rows].filter(r=>r.games>0);
   sorted.forEach(s => { s.winRate = s.games>0 ? Math.round(s.wins/s.games*100) : 0; });
-  sorted.sort((a,b) => sortDir * (a[sortKey] - b[sortKey]));
+  sorted.sort((a,b) => {
+    const primary = sortDir * (a[sortKey] - b[sortKey]);
+    if (primary !== 0) return primary;
+    // 동점 처리: 1.승률 2.경기수 적은순 3.공격포인트
+    const wrDiff = (b.winRate - a.winRate);
+    if (wrDiff !== 0) return wrDiff;
+    const gamesDiff = (a.games - b.games);
+    if (gamesDiff !== 0) return gamesDiff;
+    return ((b.goals + b.assists) - (a.goals + a.assists));
+  });
 
   // 정렬 화살표 업데이트
   ['wins','draws','losses','points','winRate','goals','assists','mvp'].forEach(k=>{
