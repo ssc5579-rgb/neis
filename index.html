@@ -639,9 +639,31 @@ async function confirmAttend() {
   document.getElementById('step2-card').style.display = 'block';
   document.getElementById('bench-info').innerHTML =
     `<div style="font-size:13px;color:var(--sub);margin-bottom:8px;font-weight:600;">오늘 참석자 ${attendees.length}명</div>
-     <div>${attendees.map(id=>`<span class="btag">${pname(id)}</span>`).join('')}</div>`;
+     <div>${attendees.map(id=>`<span class="btag">${pname(id)}</span>`).join('')}</div>
+     <button class="btn btn-outline" style="margin-top:10px;padding:8px 14px;font-size:13px;" onclick="cancelAttend()">참석자 확정 취소</button>`;
   renderPanels();
   document.getElementById('step2-card').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+async function cancelAttend() {
+  const confirmed = confirm('참석자 확정을 취소할까요?\n팀 배정 및 참석 정보가 초기화돼요.');
+  if (!confirmed) return;
+
+  const date = document.getElementById('game-date').value;
+  if (isOnline && date) {
+    try {
+      await sbFetch(`attendance?date=eq.${date}`, { method: 'DELETE' });
+    } catch(e) {
+      console.warn('참석 취소 실패:', e);
+    }
+  }
+
+  attendees = []; attendConfirmed = false; teamA = []; teamB = [];
+  lastSurvivor = null; consecutiveWinner = null; consecutiveCount = 0; isResetState = true;
+  document.getElementById('sn1').className = 'sn'; document.getElementById('sn1').textContent = '1';
+  document.getElementById('step2-card').style.display = 'none';
+  document.getElementById('bench-info').innerHTML = '';
+  renderAttend();
 }
 
 function resetAttend() {
