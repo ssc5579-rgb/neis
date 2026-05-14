@@ -674,6 +674,24 @@ function resetAttend() {
 }
 
 function renderPanels() {
+  const date = document.getElementById('game-date')?.value;
+  const todayGames = games.filter(g => g.date === date);
+  const currentNo = parseInt(document.getElementById('game-no')?.value || 1);
+
+  // 6경기 이상일 때 0승 선수 체크
+  const zeroWinIds = new Set();
+  if (currentNo >= 6 && todayGames.length >= 5) {
+    attendees.forEach(id => {
+      const hasWin = todayGames.some(g => {
+        const inA = gTeamA(g).some(tid => String(tid) === String(id));
+        const inB = gTeamB(g).some(tid => String(tid) === String(id));
+        const rA = gResultA(g);
+        return (inA && rA === 'win') || (inB && rA === 'loss');
+      });
+      if (!hasWin) zeroWinIds.add(String(id));
+    });
+  }
+
   ['a','b'].forEach(t => {
     const el = document.getElementById('panel-'+t); el.innerHTML = '';
     const myTeam = t==='a' ? teamA : teamB;
@@ -681,9 +699,11 @@ function renderPanels() {
     attendees.forEach(id => {
       const inMe = myTeam.some(tid => String(tid) === String(id));
       const inOther = otherTeam.some(tid => String(tid) === String(id));
-      if (inOther) return; 
+      if (inOther) return;
+      const isZero = zeroWinIds.has(String(id));
       const btn = document.createElement('button');
       btn.className = 'tp-chip' + (inMe ? (t==='a' ? ' in-a' : ' in-b') : '');
+      btn.style.color = isZero && !inMe ? '#EF4444' : '';
       btn.textContent = (inMe ? '✓ ' : '') + pname(id);
       btn.addEventListener('click', () => toggleTeam(t, id));
       el.appendChild(btn);
@@ -1403,6 +1423,58 @@ function renderMvpResult() {
                 <span style="font-size:15px;font-weight:600;color:var(--text);">${p ? p.name : '?'}</span>
               </div>
               <span style="font-size:14px;font-weight:700;color:var(--blue);">MVP ${cnt}회</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // 0승 명예의 전당 — 날짜별로 참석했는데 하루 한 번도 못 이긴 횟수 집계
+  const zeroTally = {};
+  const gameDates = [...new Set(games.map(g => g.date))];
+  gameDates.forEach(d => {
+    const dayGames = games.filter(g => g.date === d);
+    // 그날 출전한 모든 선수
+    const dayPlayers = new Set();
+    dayGames.forEach(g => {
+      gTeamA(g).forEach(id => dayPlayers.add(String(id)));
+      gTeamB(g).forEach(id => dayPlayers.add(String(id)));
+    });
+    // 그날 이긴 적 있는 선수
+    const dayWinners = new Set();
+    dayGames.forEach(g => {
+      const rA = gResultA(g);
+      if (rA === 'win') gTeamA(g).forEach(id => dayWinners.add(String(id)));
+      if (rA === 'loss') gTeamB(g).forEach(id => dayWinners.add(String(id)));
+    });
+    // 출전했지만 한 번도 못 이긴 선수
+    dayPlayers.forEach(id => {
+      if (!dayWinners.has(id)) {
+        const p = players.find(x => String(x.id) === id);
+        if (p && !p.name.includes('용병')) {
+          zeroTally[id] = (zeroTally[id] || 0) + 1;
+        }
+      }
+    });
+  });
+
+  const zeroSorted = Object.entries(zeroTally).sort((a, b) => b[1] - a[1]);
+  if (zeroSorted.length) {
+    resultHtml += `
+      <div class="card">
+        <div class="card-title">🏛️ 0승 명예의 전당</div>
+        <p style="font-size:12px;color:var(--sub);margin-bottom:12px;">참석했지만 하루종일 한 번도 못 이긴 날 기준</p>
+        ${zeroSorted.map(([cid, cnt], i) => {
+          const p = players.find(x => String(x.id) === cid);
+          const medals = ['🥇','🥈','🥉'];
+          return `
+            <div class="mvp-history-row">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:20px;">${medals[i]||'😭'}</span>
+                <span style="font-size:15px;font-weight:600;color:#EF4444;">${p ? p.name : '?'}</span>
+              </div>
+              <span style="font-size:14px;font-weight:700;color:#EF4444;">${cnt}회</span>
             </div>
           `;
         }).join('')}
