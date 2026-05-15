@@ -1,4 +1,4 @@
-const CACHE_NAME = 'futsal-v1';
+const CACHE_NAME = 'futsal-v2';
 const ASSETS = [
   './',
   './index.html',
