@@ -341,6 +341,17 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 
   </div>
 
+  <!-- 선수 카드 팝업 -->
+  <div id="player-card-modal" style="display:none;position:fixed;inset:0;background:#fff;z-index:1000;overflow-y:auto;">
+    <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <h2 id="pc-name" style="font-size:22px;font-weight:800;color:var(--text);"></h2>
+        <button onclick="closePlayerCard()" style="background:none;border:none;font-size:24px;color:var(--sub);cursor:pointer;">✕</button>
+      </div>
+      <div id="player-card-body"></div>
+    </div>
+  </div>
+
   <!-- 경기 수정 모달 -->
   <div id="edit-modal" style="display:none;position:fixed;inset:0;background:#fff;z-index:1000;overflow-y:auto;">
     <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
@@ -1039,6 +1050,138 @@ function closeEditModal() {
   editGameId = null; editTeamA = []; editTeamB = [];
 }
 
+function openPlayerCard(playerId) {
+  const p = players.find(x => String(x.id) === String(playerId));
+  if (!p) return;
+
+  document.getElementById('pc-name').textContent = p.name;
+  const body = document.getElementById('player-card-body');
+  body.innerHTML = '<div style="color:var(--sub);font-size:14px;">분석 중...</div>';
+  document.getElementById('player-card-modal').style.display = 'block';
+
+  // 이 선수가 출전한 모든 경기
+  const myGames = games.filter(g => {
+    return gTeamA(g).some(id => String(id) === String(playerId)) ||
+           gTeamB(g).some(id => String(id) === String(playerId));
+  });
+
+  if (!myGames.length) {
+    body.innerHTML = '<div class="empty">경기 기록이 없어요</div>';
+    return;
+  }
+
+  // 최근 5경기 결과
+  const recent5 = [...myGames].sort((a,b) => b.date?.localeCompare(a.date)||b.no-a.no).slice(0,5);
+  const recentHtml = recent5.map(g => {
+    const inA = gTeamA(g).some(id => String(id) === String(playerId));
+    const rA = gResultA(g);
+    const res = inA ? rA : (rA==='win'?'loss':rA==='loss'?'win':'draw');
+    const color = res==='win'?'#22C55E':res==='draw'?'#9CA3AF':'#EF4444';
+    const label = res==='win'?'W':res==='draw'?'D':'L';
+    return `<div style="width:32px;height:32px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;">${label}</div>`;
+  }).join('');
+
+  // 베스트 파트너 (같은 팀일 때 승률 가장 높은 선수)
+  const partnerStats = {};
+  myGames.forEach(g => {
+    const inA = gTeamA(g).some(id => String(id) === String(playerId));
+    const teammates = inA ? gTeamA(g) : gTeamB(g);
+    const rA = gResultA(g);
+    const myRes = inA ? rA : (rA==='win'?'loss':rA==='loss'?'win':'draw');
+    teammates.forEach(tid => {
+      if (String(tid) === String(playerId)) return;
+      if (!partnerStats[tid]) partnerStats[tid] = {w:0,d:0,l:0};
+      if (myRes==='win') partnerStats[tid].w++;
+      else if (myRes==='draw') partnerStats[tid].d++;
+      else partnerStats[tid].l++;
+    });
+  });
+  const partnerList = Object.entries(partnerStats)
+    .filter(([,s]) => s.w+s.d+s.l >= 2)
+    .map(([tid,s]) => { const t=s.w+s.d+s.l; return {tid, ...s, t, wr:Math.round(s.w/t*100)}; })
+    .sort((a,b) => b.wr-a.wr || b.t-a.t);
+  const partner = partnerList[0];
+  const partnerHtml = partner
+    ? `${pname(partner.tid)} (${partner.t}전 ${partner.w}승 ${partner.d}무 ${partner.l}패 · ${partner.wr}%)`
+    : '-';
+
+  // 천적 (상대팀일 때 내가 진 경우가 많은 선수)
+  const rivalStats = {};
+  myGames.forEach(g => {
+    const inA = gTeamA(g).some(id => String(id) === String(playerId));
+    const opponents = inA ? gTeamB(g) : gTeamA(g);
+    const rA = gResultA(g);
+    const myRes = inA ? rA : (rA==='win'?'loss':rA==='loss'?'win':'draw');
+    opponents.forEach(tid => {
+      if (!rivalStats[tid]) rivalStats[tid] = {w:0,d:0,l:0};
+      if (myRes==='win') rivalStats[tid].w++;
+      else if (myRes==='draw') rivalStats[tid].d++;
+      else rivalStats[tid].l++;
+    });
+  });
+  const rivalList = Object.entries(rivalStats)
+    .filter(([,s]) => s.w+s.d+s.l >= 2)
+    .map(([tid,s]) => { const t=s.w+s.d+s.l; return {tid, ...s, t, wr:Math.round(s.w/t*100)}; })
+    .sort((a,b) => a.wr-b.wr || b.t-a.t);
+  const rival = rivalList[0];
+  const rivalHtml = rival
+    ? `${pname(rival.tid)} (${rival.t}전 ${rival.w}승 ${rival.d}무 ${rival.l}패 · ${rival.wr}%)`
+    : '-';
+
+  // 베스트 어시스터 (나한테 어시스트 가장 많이 해준 선수)
+  const assistToMe = {};
+  games.forEach(g => {
+    const goals = gGoals(g);
+    const assists = gAssists(g);
+    goals.forEach((gid, i) => {
+      if (String(gid) === String(playerId) && assists[i]) {
+        const aid = String(assists[i]);
+        assistToMe[aid] = (assistToMe[aid]||0) + 1;
+      }
+    });
+  });
+  const bestAssister = Object.entries(assistToMe).sort((a,b)=>b[1]-a[1])[0];
+  const assisterHtml = bestAssister ? `${pname(bestAssister[0])} (${bestAssister[1]}개)` : '-';
+
+  // 베스트 피니셔 (내 어시스트로 골 가장 많이 넣은 선수)
+  const goalFromMe = {};
+  games.forEach(g => {
+    const goals = gGoals(g);
+    const assists = gAssists(g);
+    assists.forEach((aid, i) => {
+      if (String(aid) === String(playerId) && goals[i]) {
+        const gid = String(goals[i]);
+        goalFromMe[gid] = (goalFromMe[gid]||0) + 1;
+      }
+    });
+  });
+  const bestFinisher = Object.entries(goalFromMe).sort((a,b)=>b[1]-a[1])[0];
+  const finisherHtml = bestFinisher ? `${pname(bestFinisher[0])} (${bestFinisher[1]}개)` : '-';
+
+  const row = (icon, label, value) => `
+    <div style="display:flex;flex-direction:column;gap:4px;padding:14px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--sub);font-weight:600;">${icon} ${label}</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text);">${value}</div>
+    </div>`;
+
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="padding:14px 0;border-bottom:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--sub);font-weight:600;">📈 최근 성적</div>
+        <div style="display:flex;gap:6px;margin-top:8px;">${recentHtml}</div>
+      </div>
+      ${row('🤝', '베스트 파트너', partnerHtml)}
+      ${row('⚔️', '천적', rivalHtml)}
+      ${row('🎯', '베스트 어시스터', assisterHtml)}
+      ${row('💥', '베스트 피니셔', finisherHtml)}
+    </div>
+  `;
+}
+
+function closePlayerCard() {
+  document.getElementById('player-card-modal').style.display = 'none';
+}
+
 async function deleteGame(id) {
   const g = games.find(x=>String(x.id)===String(id));
   showModal('경기 삭제', `${g.date} ${g.no}번째 경기를 삭제할까요?`, async () => {
@@ -1341,7 +1484,8 @@ function renderStats() {
   tbody.innerHTML=sorted.map((s,i)=>{
     const rc=i===0?'r1':i===1?'r2':i===2?'r3':'r0';
     const wr = s.games>0 ? Math.round(s.wins/s.games*100) : 0;
-    return `<tr><td><span class="rn ${rc}">${i+1}</span></td><td>${s.name}</td>
+    return `<tr><td><span class="rn ${rc}">${i+1}</span></td>
+      <td><span onclick="openPlayerCard('${s.id}')" style="cursor:pointer;color:var(--blue);font-weight:700;text-decoration:underline;text-underline-offset:2px;">${s.name}</span></td>
       <td style="color:var(--win);font-weight:700;">${s.wins}</td><td style="color:var(--draw);">${s.draws}</td><td style="color:var(--loss);">${s.losses}</td>
       <td><span class="pts">${s.points}</span></td><td>${wr}%</td><td>${s.goals}</td><td>${s.assists}</td>
       <td style="color:#F59E0B;font-weight:700;">${s.mvp||0}</td></tr>`;
