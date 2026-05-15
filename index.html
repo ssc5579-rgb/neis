@@ -1485,7 +1485,7 @@ function renderStats() {
     const rc=i===0?'r1':i===1?'r2':i===2?'r3':'r0';
     const wr = s.games>0 ? Math.round(s.wins/s.games*100) : 0;
     return `<tr><td><span class="rn ${rc}">${i+1}</span></td>
-      <td><span onclick="openPlayerCard('${s.id}')" style="cursor:pointer;color:var(--blue);font-weight:700;text-decoration:underline;text-underline-offset:2px;">${s.name}</span></td>
+      <td><span onclick="openPlayerCard('${s.id}')" style="cursor:pointer;">${s.name}</span></td>
       <td style="color:var(--win);font-weight:700;">${s.wins}</td><td style="color:var(--draw);">${s.draws}</td><td style="color:var(--loss);">${s.losses}</td>
       <td><span class="pts">${s.points}</span></td><td>${wr}%</td><td>${s.goals}</td><td>${s.assists}</td>
       <td style="color:#F59E0B;font-weight:700;">${s.mvp||0}</td></tr>`;
