@@ -342,8 +342,8 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
   </div>
 
   <!-- 선수 카드 팝업 -->
-  <div id="player-card-modal" style="display:none;position:fixed;inset:0;background:#fff;z-index:1000;overflow-y:auto;">
-    <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+  <div id="player-card-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:75vh;overflow-y:auto;padding:24px 20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
         <h2 id="pc-name" style="font-size:22px;font-weight:800;color:var(--text);"></h2>
         <button onclick="closePlayerCard()" style="background:none;border:none;font-size:24px;color:var(--sub);cursor:pointer;">✕</button>
@@ -1057,7 +1057,7 @@ function openPlayerCard(playerId) {
   document.getElementById('pc-name').textContent = p.name;
   const body = document.getElementById('player-card-body');
   body.innerHTML = '<div style="color:var(--sub);font-size:14px;">분석 중...</div>';
-  document.getElementById('player-card-modal').style.display = 'block';
+  document.getElementById('player-card-modal').style.display = 'flex';
 
   // 이 선수가 출전한 모든 경기
   const myGames = games.filter(g => {
