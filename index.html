@@ -1334,7 +1334,7 @@ function renderStats() {
     return seasonMonths.includes(m);
   });
   const sm={};
-  players.forEach(p=>{ sm[p.id]={name:p.name,games:0,wins:0,draws:0,losses:0,points:0,goals:0,assists:0,mvp:0}; });
+  players.forEach(p=>{ sm[p.id]={id:p.id, name:p.name,games:0,wins:0,draws:0,losses:0,points:0,goals:0,assists:0,mvp:0}; });
 
   // MVP 집계 — 필터된 경기 날짜 기준으로만 집계
   const listDates = [...new Set(list.map(g => g.date))];
