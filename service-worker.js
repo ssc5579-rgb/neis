@@ -1,4 +1,4 @@
-const CACHE_NAME = 'futsal-v8';
+const CACHE_NAME = 'futsal-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -22,7 +22,8 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Supabase API 요청은 캐시 안 함
+  // chrome-extension 및 Supabase API 요청은 캐시 안 함
+  if (e.request.url.startsWith('chrome-extension')) return;
   if (e.request.url.includes('supabase.co')) return;
 
   e.respondWith(
