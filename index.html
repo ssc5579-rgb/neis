@@ -1555,9 +1555,9 @@ function updateMvpDateSel() {
 }
 
 async function loadMvpVotes(date) {
-  if (!isOnline || !date) return;
+  if (!isOnline) return;
   try {
-    const data = await sbFetch(`mvp_votes?date=eq.${date}`);
+    const data = await sbFetch('mvp_votes');
     mvpVotes = data || [];
   } catch(e) {
     console.warn('MVP 투표 불러오기 실패:', e.message);
