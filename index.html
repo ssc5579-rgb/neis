@@ -517,6 +517,21 @@ async function init() {
   
   updateFilters(); 
   updateMvpDateSel();
+  // 오늘 날짜 마지막 경기에서 팀 상태 복원
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayGames = games.filter(g => g.date === todayStr).sort((a,b) => b.no - a.no);
+  if (todayGames.length > 0) {
+    const last = todayGames[0];
+    if (last.surviving_team !== undefined) {
+      lastSurvivor = last.surviving_team;
+      consecutiveWinner = last.consecutive_winner;
+      consecutiveCount = last.consecutive_count || 0;
+      isResetState = last.is_reset !== false ? true : (last.surviving_team === null);
+      if (last.surviving_team === 'a') teamA = [...(last.team_a || [])];
+      else if (last.surviving_team === 'b') teamB = [...(last.team_b || [])];
+    }
+  }
+
   try { renderLog(); } catch(e) { console.error('renderLog fail:', e); }
   try { renderAttend(); } catch(e) { console.error('renderAttend fail:', e); }
   try { renderPlayerList(); } catch(e) { console.error('renderPlayerList fail:', e); }
@@ -843,7 +858,37 @@ async function saveGame() {
   });
   const rA=sa>sb?'win':sa===sb?'draw':'loss';
   const rB=sa<sb?'win':sa===sb?'draw':'loss';
-  const payload = { date, no, team_a:teamA, team_b:teamB, score_a:sa, score_b:sb, result_a:rA, result_b:rB, goals, assists };
+  // 팀 상태 저장 (다른 기기에서도 복원 가능하도록)
+  const survivingTeamAfter = (() => {
+    if (rA === 'draw') {
+      if (isResetState || lastSurvivor === null) return null;
+      return lastSurvivor === 'a' ? 'b' : 'a';
+    } else {
+      const winner = rA === 'win' ? 'a' : 'b';
+      const newCount = consecutiveWinner === winner ? consecutiveCount + 1 : 1;
+      return newCount >= 2 ? null : winner;
+    }
+  })();
+  const consecutiveWinnerAfter = (() => {
+    if (rA === 'draw') return null;
+    const winner = rA === 'win' ? 'a' : 'b';
+    const newCount = consecutiveWinner === winner ? consecutiveCount + 1 : 1;
+    return newCount >= 2 ? null : winner;
+  })();
+  const consecutiveCountAfter = (() => {
+    if (rA === 'draw') return 0;
+    const winner = rA === 'win' ? 'a' : 'b';
+    const newCount = consecutiveWinner === winner ? consecutiveCount + 1 : 1;
+    return newCount >= 2 ? 0 : newCount;
+  })();
+  const isResetAfter = survivingTeamAfter === null;
+
+  const payload = { date, no, team_a:teamA, team_b:teamB, score_a:sa, score_b:sb, result_a:rA, result_b:rB, goals, assists,
+    surviving_team: survivingTeamAfter,
+    consecutive_winner: consecutiveWinnerAfter,
+    consecutive_count: consecutiveCountAfter,
+    is_reset: isResetAfter
+  };
 
   if (isOnline) {
     try {
@@ -1350,8 +1395,12 @@ function renderStats() {
     const dayTally = {};
     dayVotes.forEach(dv => { dayTally[String(dv.candidate_id)] = (dayTally[String(dv.candidate_id)] || 0) + 1; });
     if (!Object.keys(dayTally).length) return;
-    const dayMax = Math.max(...Object.values(dayTally));
-    Object.entries(dayTally).filter(([,c]) => c === dayMax).forEach(([id]) => {
+    const sortedDay = Object.entries(dayTally).sort((a,b) => b[1]-a[1]);
+    if (!sortedDay.length) return;
+    const dayMax = sortedDay[0][1];
+    const day2nd = sortedDay.find(([,c]) => c < dayMax)?.[1];
+    // 1등(공동 포함) + 2등(공동 포함) 모두 MVP 카운트
+    sortedDay.filter(([,c]) => c === dayMax || (day2nd && c === day2nd)).forEach(([id]) => {
       if (sm[id]) sm[id].mvp++;
     });
   });
@@ -1743,17 +1792,24 @@ function renderMvpResult() {
     const dayVotes = mvpVotes.filter(x => x.date === d);
     const dayTally = {};
     dayVotes.forEach(dv => { dayTally[String(dv.candidate_id)] = (dayTally[String(dv.candidate_id)] || 0) + 1; });
-    const dayMax = Math.max(...Object.values(dayTally));
-    const dayWinners = Object.entries(dayTally).filter(([,c]) => c === dayMax).map(([id]) => id);
-    dayWinners.forEach(id => { allTally[id] = (allTally[id] || 0) + 1; });
+    const sortedDay = Object.entries(dayTally).sort((a,b) => b[1]-a[1]);
+    if (!sortedDay.length) return;
+    const dayMax = sortedDay[0][1];
+    const day2nd = sortedDay.find(([,c]) => c < dayMax)?.[1];
+    // 1등(공동 포함) + 2등(공동 포함) 모두 카운트
+    sortedDay.filter(([,c]) => c === dayMax || (day2nd && c === day2nd)).forEach(([id]) => {
+      allTally[id] = (allTally[id] || 0) + 1;
+    });
   });
   const allSorted = Object.entries(allTally).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   // 오늘 날짜 공동 MVP 표시용
   const todayWinners = (() => {
     if (!totalVotes) return [];
-    const maxV2 = Math.max(...Object.values(tally));
-    return Object.entries(tally).filter(([,c]) => c === maxV2).map(([id]) => id);
+    const sortedTally = Object.entries(tally).sort((a,b) => b[1]-a[1]);
+    const maxV2 = sortedTally[0][1];
+    const sec = sortedTally.find(([,c]) => c < maxV2)?.[1];
+    return sortedTally.filter(([,c]) => c === maxV2 || (sec && c === sec)).map(([id]) => id);
   })();
   const isShared = todayWinners.length > 1;
 
@@ -1847,6 +1903,21 @@ if (dateEl) {
   dateEl.addEventListener('change', () => {
     attendees = []; attendConfirmed = false; teamA = []; teamB = [];
     lastSurvivor = null; consecutiveWinner = null; consecutiveCount = 0; isResetState = true;
+    // 마지막 경기에서 팀 상태 복원
+    const newDate = dateEl.value;
+    const dayGames = games.filter(g => g.date === newDate).sort((a,b) => b.no - a.no);
+    if (dayGames.length > 0) {
+      const last = dayGames[0];
+      if (last.surviving_team !== undefined) {
+        lastSurvivor = last.surviving_team;
+        consecutiveWinner = last.consecutive_winner;
+        consecutiveCount = last.consecutive_count || 0;
+        isResetState = last.is_reset !== false ? true : (last.surviving_team === null);
+        // 살아남은 팀 자동 선택
+        if (last.surviving_team === 'a') teamA = [...(last.team_a || [])];
+        else if (last.surviving_team === 'b') teamB = [...(last.team_b || [])];
+      }
+    }
     const gNoEl = document.getElementById('game-no'); if (gNoEl) gNoEl.value = 1; 
     const sn1 = document.getElementById('sn1'); if (sn1) { sn1.className = 'sn'; sn1.textContent = '1'; }
     const s2c = document.getElementById('step2-card'); if (s2c) s2c.style.display = 'none';
