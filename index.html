@@ -1142,6 +1142,8 @@ function openPlayerCard(playerId) {
     const myRes = inA ? rA : (rA==='win'?'loss':rA==='loss'?'win':'draw');
     teammates.forEach(tid => {
       if (String(tid) === String(playerId)) return;
+      const tp = players.find(x => String(x.id) === String(tid));
+      if (!tp || tp.name.includes('용병')) return;
       if (!partnerStats[tid]) partnerStats[tid] = {w:0,d:0,l:0};
       if (myRes==='win') partnerStats[tid].w++;
       else if (myRes==='draw') partnerStats[tid].d++;
@@ -1165,6 +1167,8 @@ function openPlayerCard(playerId) {
     const rA = gResultA(g);
     const myRes = inA ? rA : (rA==='win'?'loss':rA==='loss'?'win':'draw');
     opponents.forEach(tid => {
+      const rp2 = players.find(x => String(x.id) === String(tid));
+      if (!rp2 || rp2.name.includes('용병')) return;
       if (!rivalStats[tid]) rivalStats[tid] = {w:0,d:0,l:0};
       if (myRes==='win') rivalStats[tid].w++;
       else if (myRes==='draw') rivalStats[tid].d++;
