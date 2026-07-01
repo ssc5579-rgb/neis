@@ -119,27 +119,56 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 .sb-val span { font-size:13px; font-weight:600; color:var(--sub); }
 .sb-leader { font-size:12px; color:var(--blue); font-weight:600; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* 순위표 (가로 스크롤 및 이름 고정 스타일 적용) */
-.table-wrapper { width: 100%; overflow-x: auto; }
-.rtable { width:100%; border-collapse:collapse; font-size:14px; table-layout: fixed; }
-.rtable th, .rtable td { min-width: 55px; white-space: nowrap; }
-.rtable th:nth-child(1), .rtable td:nth-child(1) { min-width: 35px; width: 35px; }
-.rtable th:nth-child(2), .rtable td:nth-child(2) { 
-  position: sticky; left: 0; background: var(--card); z-index: 2; min-width: 75px; width: 75px; 
+/* 순위표 (가로 스크롤 및 이름 고정 스타일) */
+.table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rtable { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+
+.rtable th:nth-child(1), .rtable td:nth-child(1) { 
+  position: sticky; left: 0; background: var(--card); z-index: 3; width: 35px; min-width: 35px; 
 }
-.rtable th:nth-child(2) { background: #fff; }
-.rtable tr:hover td:nth-child(2) { background: #f9fafb; }
-.rtable th { padding:10px 6px; font-size:11px; font-weight:700; color:var(--sub); text-align:center; border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:.3px; }
-.rtable th:nth-child(2) { text-align:left; }
-.rtable td { padding:12px 6px; text-align:center; border-bottom:1px solid var(--border); color:var(--text); font-weight:500; }
-.rtable td:nth-child(2) { text-align:left; font-weight:700; }
+.rtable th:nth-child(2), .rtable td:nth-child(2) { 
+  position: sticky; left: 35px; background: var(--card); z-index: 3; width: 65px; min-width: 65px; 
+}
+
+.rtable th:nth-child(1) { background: #fff; }
+.rtable th:nth-child(2) { background: #fff; text-align: left; }
+
+.rtable th:nth-child(3), .rtable td:nth-child(3) { width: 40px; min-width: 40px; } /* 승 */
+.rtable th:nth-child(4), .rtable td:nth-child(4) { width: 40px; min-width: 40px; } /* 무 */
+.rtable th:nth-child(5), .rtable td:nth-child(5) { width: 40px; min-width: 40px; } /* 패 */
+.rtable th:nth-child(6), .rtable td:nth-child(6) { width: 75px; min-width: 75px; } /* 승점 */
+.rtable th:nth-child(7), .rtable td:nth-child(7) { width: 65px; min-width: 65px; } /* 승률 */
+.rtable th:nth-child(8), .rtable td:nth-child(8) { width: 40px; min-width: 40px; } /* 골 */
+.rtable th:nth-child(9), .rtable td:nth-child(9) { width: 40px; min-width: 40px; } /* AS */
+.rtable th:nth-child(10), .rtable td:nth-child(10) { width: 45px; min-width: 45px; } /* G/A 항목 */
+.rtable th:nth-child(11), .rtable td:nth-child(11) { width: 50px; min-width: 50px; } /* MVP */
+
+.rtable th { padding:10px 4px; font-size:11px; font-weight:700; color:var(--sub); text-align:center; border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:.3px; }
+.rtable td { padding:12px 4px; text-align:center; border-bottom:1px solid var(--border); color:var(--text); font-weight:500; white-space: nowrap; }
+.rtable td:nth-child(2) { font-weight:700; }
+.rtable tr:hover td { background: #f9fafb; }
 .rtable tr:last-child td { border-bottom:none; }
+
 .rn { width:26px; height:26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; }
 .r1 { background:#FEF3C7; color:#B45309; }
 .r2 { background:#F1F5F9; color:#64748B; }
 .r3 { background:#FEE2E2; color:#B91C1C; }
 .r0 { background:var(--bg); color:var(--sub); }
-.pts { background:linear-gradient(135deg,var(--blue),var(--blue-dark)); color:#fff; border-radius:8px; padding:4px 10px; font-size:13px; font-weight:700; }
+
+.rtable td:nth-child(6) { padding: 8px 4px !important; }
+.pts { 
+  display: inline-flex !important; 
+  align-items: center; 
+  justify-content: center; 
+  background: linear-gradient(135deg, var(--blue), var(--blue-dark)) !important; 
+  color: #fff !important; 
+  border-radius: 8px !important; 
+  padding: 4px 10px !important; 
+  font-size: 13px !important; 
+  font-weight: 700 !important; 
+  min-width: 45px;
+  box-sizing: border-box;
+}
 
 /* 선수 관리 */
 .pr { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border); }
@@ -161,7 +190,6 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 .frow select { flex:1; font-size:15px; }
 .ga-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
 .ga-row select { flex:1; font-size:15px; padding:11px 10px; }
-
 
 /* 모달 */
 .modal { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:999; padding:20px; }
@@ -200,7 +228,6 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 .mvp-history-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
 .mvp-history-row:last-child { border-bottom:none; }
 
-/* 탭 4개일 때 폰트 살짝 조정 */
 .tab { font-size:12px; }
 
 </style>
@@ -271,7 +298,6 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       <div id="bench-info" style="margin-bottom:12px;"></div>
       <hr class="divider">
 
-      <!-- 3팀 모드 표시 -->
       <div id="three-team-panel" style="display:none;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div style="font-size:14px;font-weight:700;color:var(--blue);">⚡ 3팀 모드</div>
@@ -363,7 +389,7 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       <div class="card-title">선수별 순위</div>
       <div class="table-wrapper">
         <table class="rtable">
-          <thead><tr><th>#</th><th>선수</th><th style="cursor:pointer;user-select:none;" onclick="sortStats('wins')">승<span id="sort-wins"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('draws')">무<span id="sort-draws"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('losses')">패<span id="sort-losses"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('points')">승점<span id="sort-points"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('winRate')">승률<span id="sort-winRate"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('goals')">골<span id="sort-goals"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('assists')">AS<span id="sort-assists"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('mvp')">MVP<span id="sort-mvp"></span></th></tr></thead>
+          <thead><tr><th>#</th><th>선수</th><th style="cursor:pointer;user-select:none;" onclick="sortStats('wins')">승<span id="sort-wins"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('draws')">무<span id="sort-draws"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('losses')">패<span id="sort-losses"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('points')">승점<span id="sort-points"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('winRate')">승률<span id="sort-winRate"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('goals')">골<span id="sort-goals"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('assists')">AS<span id="sort-assists"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('attackPts')">G/A<span id="sort-attackPts"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('mvp')">MVP<span id="sort-mvp"></span></th></tr></thead>
           <tbody id="stats-body"></tbody>
         </table>
       </div>
@@ -371,7 +397,6 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 
   </div>
 
-  <!-- 선수 카드 팝업 -->
   <div id="player-card-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;">
     <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:75vh;overflow-y:auto;padding:24px 20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
@@ -382,17 +407,14 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
     </div>
   </div>
 
-  <!-- 경기 수정 모달 -->
   <div id="edit-modal" style="display:none;position:fixed;inset:0;background:#fff;z-index:1000;overflow-y:auto;">
     <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
 
-      <!-- 헤더 -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
         <h2 style="font-size:20px;font-weight:800;color:var(--text);">경기 수정</h2>
         <button onclick="closeEditModal()" style="background:none;border:none;font-size:24px;color:var(--sub);cursor:pointer;">✕</button>
       </div>
 
-      <!-- 스코어 -->
       <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:24px;">
         <div style="text-align:center;">
           <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;letter-spacing:1px;">TEAM A</div>
@@ -405,7 +427,6 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
         </div>
       </div>
 
-      <!-- 팀 배정 -->
       <div style="font-size:14px;font-weight:600;color:var(--sub);margin-bottom:12px;">팀 배정 수정</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;">
         <div style="border:2px solid #BFDBFE;border-radius:var(--r);padding:12px;background:#F0F7FF;">
@@ -424,12 +445,10 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
         </div>
       </div>
 
-      <!-- 골/어시스트 -->
       <div style="font-size:14px;font-weight:600;color:var(--sub);margin-bottom:12px;">골 · 어시스트 수정</div>
       <div id="edit-ga-inputs" style="margin-bottom:12px;"></div>
       <button class="btn btn-outline" style="width:100%;margin-bottom:24px;" onclick="addEditGaRow()">+ 골/어시스트 추가</button>
 
-      <!-- 저장/취소 -->
       <div style="display:flex;gap:10px;">
         <button class="btn btn-outline" style="flex:1;" onclick="closeEditModal()">취소</button>
         <button class="btn btn-primary" style="flex:2;" onclick="saveEditGame()">저장</button>
@@ -438,10 +457,8 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
     </div>
   </div>
 
-  <!-- MVP 탭 -->
   <div id="tab-mvp" class="sec">
 
-    <!-- 나는 누구? -->
     <div class="card" id="mvp-identity-card">
       <div class="card-title">👤 나는 누구?</div>
       <p style="font-size:14px;color:var(--sub);margin-bottom:12px;">투표 전에 먼저 본인을 선택해주세요.</p>
@@ -452,7 +469,6 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       </div>
     </div>
 
-    <!-- 날짜 선택 -->
     <div class="card">
       <div class="card-title">📅 투표할 날짜</div>
       <select id="mvp-date-sel" onchange="renderMvpTab()" style="width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:16px;font-family:inherit;color:var(--text);background:#F9FAFB;outline:none;-webkit-appearance:none;">
@@ -460,10 +476,7 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       </select>
     </div>
 
-    <!-- 투표 영역 -->
     <div id="mvp-vote-area"></div>
-
-    <!-- MVP 결과 -->
     <div id="mvp-result-area"></div>
 
   </div>
@@ -471,18 +484,14 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 </div>
 
 <script>
-// ══════════════════════════════════════════
-// ★ Supabase 설정
-// ══════════════════════════════════════════
 const SUPABASE_URL = 'https://qkbzjhqkyudvkjrdahun.supabase.co'; 
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFrYnpqaHFreXVkdmtqcmRhaHVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3NDcwNTEsImV4cCI6MjA5MjMyMzA1MX0.qbwg432XfRAMdlA4A1VTPg6NRKjTi0HitVs9iA1Xbis'; 
 
 const SB = { url: SUPABASE_URL, key: SUPABASE_KEY };
 
-// [수정] 타임아웃이 포함된 Fetch 함수
 async function sbFetch(path, opts = {}) {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 8000); // 8초 타임아웃
+  const id = setTimeout(() => controller.abort(), 8000);
 
   try {
     const res = await fetch(`${SB.url}/rest/v1/${path}`, {
@@ -509,15 +518,14 @@ async function sbFetch(path, opts = {}) {
 let players = [], games = [];
 let attendees = [], attendConfirmed = false;
 let teamA = [], teamB = [];
-let lastSurvivor = null;  // 'a' or 'b' — 직전 경기에서 살아남은 팀
-let consecutiveWinner = null; // 'a' or 'b' — 현재 연승 중인 팀
-let consecutiveCount = 0;     // 현재 연승 횟수
-let isResetState = true;      // 리셋 상태 여부 (게임 시작 or 2연승 직후)
+let lastSurvivor = null;  
+let consecutiveWinner = null; 
+let consecutiveCount = 0;     
+let isResetState = true;      
 
-// 3팀 모드 상태
 let threeTeamMode = false;
 let teamC = [];
-let teamA3 = [], teamB3 = []; // 3팀 원본 보존용
+let teamA3 = [], teamB3 = []; 
 let threeTeamRotation = [];
 let threeTeamRotationIndex = 0;
 let threeTeamGameCountInRound = 0;
@@ -527,7 +535,6 @@ let isOnline = false;
 async function init() {
   setSyncStatus('load', '서버 연결 중...');
   
-  // 개별적으로 데이터를 시도하여 하나가 실패해도 로컬 데이터를 활용할 수 있게 함
   try {
     const pData = await sbFetch('players?order=created_at');
     players = pData || [];
@@ -555,7 +562,6 @@ async function init() {
   
   updateFilters(); 
   updateMvpDateSel();
-  // 오늘 날짜 마지막 경기에서 팀 상태 복원
   const todayStr = new Date().toISOString().slice(0,10);
   const todayGames = games.filter(g => g.date === todayStr).sort((a,b) => b.no - a.no);
   if (todayGames.length > 0) {
@@ -1410,9 +1416,6 @@ function closeEditModal() {
   editGameId = null; editTeamA = []; editTeamB = [];
 }
 
-// ══════════════════════════════════════════
-// ★ 수정사항 1 & 2 적용된 Player Card 분석 영역
-// ══════════════════════════════════════════
 function openPlayerCard(playerId) {
   const p = players.find(x => String(x.id) === String(playerId));
   if (!p) return;
@@ -1442,7 +1445,6 @@ function openPlayerCard(playerId) {
     return `<div style="width:32px;height:32px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;">${label}</div>`;
   }).join('');
 
-  // [수정 1] 베스트 파트너 집계 (최소 20전 이상만 데이터 수집)
   const partnerStats = {};
   myGames.forEach(g => {
     const inA = gTeamA(g).some(id => String(id) === String(playerId));
@@ -1460,7 +1462,7 @@ function openPlayerCard(playerId) {
     });
   });
   const partnerList = Object.entries(partnerStats)
-    .filter(([,s]) => s.w+s.d+s.l >= 20) // 최소 20전 조건 필터
+    .filter(([,s]) => s.w+s.d+s.l >= 20)
     .map(([tid,s]) => { const t=s.w+s.d+s.l; return {tid, ...s, t, wr:Math.round(s.w/t*100)}; })
     .sort((a,b) => b.wr-a.wr || b.t-a.t);
   const partner = partnerList[0];
@@ -1468,7 +1470,6 @@ function openPlayerCard(playerId) {
     ? `${pname(partner.tid)} (${partner.t}전 ${partner.w}승 ${partner.d}무 ${partner.l}패 · ${partner.wr}%)`
     : '데이터 부족 (20전 이상 필요)';
 
-  // [수정 1 & 2] 천적 집계 공식 반영 (최소 20전 이상 & 승점 낮은 사람순 정렬)
   const rivalStats = {};
   myGames.forEach(g => {
     const inA = gTeamA(g).some(id => String(id) === String(playerId));
@@ -1485,14 +1486,14 @@ function openPlayerCard(playerId) {
     });
   });
   const rivalList = Object.entries(rivalStats)
-    .filter(([,s]) => s.w+s.d+s.l >= 20) // 최소 20전 조건 필터
+    .filter(([,s]) => s.w+s.d+s.l >= 20)
     .map(([tid,s]) => { 
       const t=s.w+s.d+s.l; 
-      const score=(s.w*1)+(s.d*0)+(s.l*-1); // 지정된 신규 공식 계산: 승*1 + 무*0 + 패*-1
+      const score=(s.w*1)+(s.d*0)+(s.l*-1);
       return {tid, ...s, t, wr:Math.round(s.w/t*100), score}; 
     })
-    .sort((a,b) => a.score-b.score || b.t-a.t); // 공식 점수가 가장 낮은 사람순 오름차순 정렬
- const rival = rivalList[0];
+    .sort((a,b) => a.score-b.score || b.t-a.t);
+  const rival = rivalList[0];
   const rivalHtml = rival
     ? `${pname(rival.tid)} (${rival.t}전 ${rival.w}승 ${rival.d}무 ${rival.l}패 · ${rival.wr}%)`
     : '데이터 부족 (20전 이상 필요)';
@@ -1695,7 +1696,7 @@ function renderStats() {
     return seasonMonths.includes(m);
   });
   const sm={};
-  players.forEach(p=>{ sm[p.id]={id:p.id, name:p.name,games:0,wins:0,draws:0,losses:0,points:0,goals:0,assists:0,mvp:0}; });
+  players.forEach(p=>{ sm[p.id]={id:p.id, name:p.name,games:0,wins:0,draws:0,losses:0,points:0,goals:0,assists:0,attackPts:0,mvp:0}; });
 
   const listDates = [...new Set(list.map(g => g.date))];
   listDates.forEach(d => {
@@ -1724,6 +1725,10 @@ function renderStats() {
       if (foundId) sm[foundId].assists++;
     }});
   });
+  
+  // 공격포인트(attackPts) 데이터 수치 갱신
+  Object.values(sm).forEach(s => { s.attackPts = s.goals + s.assists; });
+
   const rows=Object.values(sm).filter(r=>!r.name.includes('용병'));
   const byGames = [...rows].filter(r=>r.games>0).sort((a,b)=>b.games-a.games);
   const byGoals = [...rows].filter(r=>r.goals>0).sort((a,b)=>b.goals-a.goals);
@@ -1731,7 +1736,7 @@ function renderStats() {
   const byPoints = [...rows].filter(r=>r.points>0).sort((a,b)=>b.points-a.points);
 
   const byWinRate = [...rows].filter(r=>r.games>0).sort((a,b)=>(b.wins/b.games)-(a.wins/a.games));
-  const byAttackPts = [...rows].filter(r=>r.games>0).sort((a,b)=>(b.goals+b.assists)-(a.goals+a.assists));
+  const byAttackPts = [...rows].filter(r=>r.games>0).sort((a,b)=>b.attackPts-a.attackPts);
   const byMvp = [...rows].filter(r=>r.mvp>0).sort((a,b)=>b.mvp-a.mvp);
   const topWinRate = byWinRate[0];
   const topWinRateStr = topWinRate ? Math.round(topWinRate.wins/topWinRate.games*100)+'%' : '0%';
@@ -1795,12 +1800,12 @@ function renderStats() {
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
           <div>
             <div class="sb-label">공격 포인트</div>
-            <div class="sb-val">${byAttackPts[0]?(byAttackPts[0].goals+byAttackPts[0].assists):0}<span>P</span></div>
+            <div class="sb-val">${byAttackPts[0]?.attackPts??0}<span>P</span></div>
             <div class="sb-leader">${byAttackPts[0]?'🔥 '+byAttackPts[0].name:'-'}</div>
           </div>
           <div class="sb-rank2" style="display:none;text-align:right;">
-            ${byAttackPts[1]?'<div style="font-size:12px;color:var(--sub);margin-bottom:3px;">🥈 '+byAttackPts[1].name+' '+(byAttackPts[1].goals+byAttackPts[1].assists)+'P</div>':''}
-            ${byAttackPts[2]?'<div style="font-size:12px;color:var(--sub);">🥉 '+byAttackPts[2].name+' '+(byAttackPts[2].goals+byAttackPts[2].assists)+'P</div>':''}
+            ${byAttackPts[1]?'<div style="font-size:12px;color:var(--sub);margin-bottom:3px;">🥈 '+byAttackPts[1].name+' '+byAttackPts[1].attackPts+'P</div>':''}
+            ${byAttackPts[2]?'<div style="font-size:12px;color:var(--sub);">🥉 '+byAttackPts[2].name+' '+byAttackPts[2].attackPts+'P</div>':''}
           </div>
         </div>
       </div>
@@ -1829,17 +1834,17 @@ function renderStats() {
     if (wrDiff !== 0) return wrDiff;
     const gamesDiff = (a.games - b.games);
     if (gamesDiff !== 0) return gamesDiff;
-    return ((b.goals + b.assists) - (a.goals + a.assists));
+    return (b.attackPts - a.attackPts);
   });
 
-  ['wins','draws','losses','points','winRate','goals','assists','mvp'].forEach(k=>{
+  ['wins','draws','losses','points','winRate','goals','assists','attackPts','mvp'].forEach(k=>{
     const el=document.getElementById('sort-'+k);
     if(el) el.textContent = sortKey===k ? (sortDir===-1?' ▼':' ▲') : '';
   });
 
   const tbody=document.getElementById('stats-body');
   if(!tbody) return;
-  if(!sorted.length){tbody.innerHTML='<tr><td colspan="10" class="empty">데이터 없음</td></tr>';return;}
+  if(!sorted.length){tbody.innerHTML='<tr><td colspan="11" class="empty">데이터 없음</td></tr>';return;}
   tbody.innerHTML=sorted.map((s,i)=>{
     const rc=i===0?'r1':i===1?'r2':i===2?'r3':'r0';
     const wr = s.games>0 ? Math.round(s.wins/s.games*100) : 0;
@@ -1847,11 +1852,10 @@ function renderStats() {
       <td><span onclick="openPlayerCard('${s.id}')" style="cursor:pointer;">${s.name}</span></td>
       <td style="color:var(--win);font-weight:700;">${s.wins}</td><td style="color:var(--draw);">${s.draws}</td><td style="color:var(--loss);">${s.losses}</td>
       <td><span class="pts">${s.points}</span></td><td>${wr}%</td><td>${s.goals}</td><td>${s.assists}</td>
+      <td>${s.attackPts}</td>
       <td style="color:#F59E0B;font-weight:700;">${s.mvp||0}</td></tr>`;
   }).join('');
 }
-
-
 
 // ══════════════════════════════════════════
 // MVP 투표
@@ -2178,7 +2182,6 @@ function renderMvpResult() {
 
   el.innerHTML = resultHtml;
 }
-
 
 const dateEl = document.getElementById('game-date');
 if (dateEl) {
