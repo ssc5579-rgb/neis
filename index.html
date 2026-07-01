@@ -119,8 +119,16 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
 .sb-val span { font-size:13px; font-weight:600; color:var(--sub); }
 .sb-leader { font-size:12px; color:var(--blue); font-weight:600; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* 순위표 */
-.rtable { width:100%; border-collapse:collapse; font-size:14px; }
+/* 순위표 (가로 스크롤 및 이름 고정 스타일 적용) */
+.table-wrapper { width: 100%; overflow-x: auto; }
+.rtable { width:100%; border-collapse:collapse; font-size:14px; table-layout: fixed; }
+.rtable th, .rtable td { min-width: 55px; white-space: nowrap; }
+.rtable th:nth-child(1), .rtable td:nth-child(1) { min-width: 35px; width: 35px; }
+.rtable th:nth-child(2), .rtable td:nth-child(2) { 
+  position: sticky; left: 0; background: var(--card); z-index: 2; min-width: 75px; width: 75px; 
+}
+.rtable th:nth-child(2) { background: #fff; }
+.rtable tr:hover td:nth-child(2) { background: #f9fafb; }
 .rtable th { padding:10px 6px; font-size:11px; font-weight:700; color:var(--sub); text-align:center; border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:.3px; }
 .rtable th:nth-child(2) { text-align:left; }
 .rtable td { padding:12px 6px; text-align:center; border-bottom:1px solid var(--border); color:var(--text); font-weight:500; }
@@ -275,7 +283,7 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
           <button onclick="selectTeamForMatch('b')" style="padding:8px;border:1.5px solid #F97316;border-radius:8px;font-size:13px;font-weight:700;color:#F97316;background:#FFF7F0;cursor:pointer;">팀B 선택</button>
           <button onclick="selectTeamForMatch('c')" style="padding:8px;border:1.5px solid #10B981;border-radius:8px;font-size:13px;font-weight:700;color:#10B981;background:#F0FDF7;cursor:pointer;">팀C 선택</button>
         </div>
-        <div id="next-matchup" style="text-align:center;padding:10px;background:#FEF3C7;border-radius:var(--rs);font-size:14px;font-weight:700;color:#92400E;"></div>
+        <div id="next-matchup" style="text-align:center;padding:10px;background:#FEF3C7;border-radius:var(--rs);font-size:13px;font-weight:600;color:#92400E;margin-top:6px;"></div>
       </div>
 
       <div class="field">
@@ -351,12 +359,14 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       <select id="ss" onchange="onSeasonChange()" style="flex:1;"><option value="">전체 시즌</option><option value="kick-off">⚽ Kick-Off (4~6월)</option><option value="full-press">🔥 Full-Press (7~9월)</option><option value="final-whistle">🏁 Final-Whistle (10~12월)</option></select>
     </div>
     <div class="stat-grid" id="stat-summary"></div>
-    <div class="card" style="overflow-x:auto;">
+    <div class="card">
       <div class="card-title">선수별 순위</div>
-      <table class="rtable">
-        <thead><tr><th>#</th><th>선수</th><th style="cursor:pointer;user-select:none;" onclick="sortStats('wins')">승<span id="sort-wins"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('draws')">무<span id="sort-draws"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('losses')">패<span id="sort-losses"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('points')">승점<span id="sort-points"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('winRate')">승률<span id="sort-winRate"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('goals')">골<span id="sort-goals"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('assists')">AS<span id="sort-assists"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('mvp')">MVP<span id="sort-mvp"></span></th></tr></thead>
-        <tbody id="stats-body"></tbody>
-      </table>
+      <div class="table-wrapper">
+        <table class="rtable">
+          <thead><tr><th>#</th><th>선수</th><th style="cursor:pointer;user-select:none;" onclick="sortStats('wins')">승<span id="sort-wins"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('draws')">무<span id="sort-draws"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('losses')">패<span id="sort-losses"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('points')">승점<span id="sort-points"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('winRate')">승률<span id="sort-winRate"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('goals')">골<span id="sort-goals"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('assists')">AS<span id="sort-assists"></span></th><th style="cursor:pointer;user-select:none;" onclick="sortStats('mvp')">MVP<span id="sort-mvp"></span></th></tr></thead>
+          <tbody id="stats-body"></tbody>
+        </table>
+      </div>
     </div>
 
   </div>
@@ -507,9 +517,10 @@ let isResetState = true;      // 리셋 상태 여부 (게임 시작 or 2연승 
 // 3팀 모드 상태
 let threeTeamMode = false;
 let teamC = [];
-let threeTeamRotation = []; // 예: ['c','a'],['c','b'],['b','a']...
+let teamA3 = [], teamB3 = []; // 3팀 원본 보존용
+let threeTeamRotation = [];
 let threeTeamRotationIndex = 0;
-let threeTeamGameCountInRound = 0; // 현재 매치업에서 몇 경기째인지 (2경기마다 순환)
+let threeTeamGameCountInRound = 0;
 let pendingCb = null;
 let isOnline = false;
 
@@ -677,7 +688,6 @@ async function removePlayer(id, name) {
   });
 }
 
-// ★ 수정 1: 선수 목록 가나다순 정렬, 용병 포함 시 맨 뒤
 function sortPlayers(arr) {
   return [...arr].sort((a, b) => {
     const aYong = a.name.includes('용병');
@@ -729,9 +739,7 @@ function toggleAttend(id) {
 function selAll() { attendees = players.map(p=>p.id); renderAttend(); }
 function selNone() { attendees = []; renderAttend(); }
 
-// ── 3팀 자동 배정 황금밸런스 알고리즘 ──
 function getPlayerScore(playerId) {
-  // 통계 데이터에서 해당 선수 종합 점수 계산 (승률 > 승점 > 공격포인트 순 가중치)
   const myGames = games.filter(g =>
     gTeamA(g).some(id => String(id) === String(playerId)) ||
     gTeamB(g).some(id => String(id) === String(playerId))
@@ -752,7 +760,6 @@ function getPlayerScore(playerId) {
   const points = wins*3 + draws*1;
   const attackPts = goals+assists;
 
-  // MVP 횟수 (1,2등 포함 집계 - renderStats와 동일 로직)
   let mvpCount = 0;
   const myDates = [...new Set(myGames.map(g => g.date))];
   myDates.forEach(d => {
@@ -767,7 +774,6 @@ function getPlayerScore(playerId) {
     if (isTopOrSecond) mvpCount++;
   });
 
-  // 가중치: 승률(x3) > 승점(x2) > 공격포인트(x1)
   const score = winRate*3 + points*2 + attackPts*1;
   return { score, mvpCount };
 }
@@ -777,25 +783,21 @@ function autoAssign3Teams() {
   const n = list.length;
   if (n < 18) { alert('18명 이상일 때만 3팀 배정이 가능해요'); return; }
 
-  // 인원 분배 계산 (6/6/7, 6/7/7, 7/7/7 등 균등하게)
   const base = Math.floor(n / 3);
   const remainder = n % 3;
   const sizes = [base, base, base];
   for (let i = 0; i < remainder; i++) sizes[i]++;
-  sizes.sort((a,b) => b-a); // 큰 순서로 [7,7,6] 등
+  sizes.sort((a,b) => b-a);
 
-  // 선수별 점수 계산
   const scored = list.map(id => ({ id, ...getPlayerScore(id) }));
 
-  // 1단계: MVP 수상자 먼저 분산 배정 (점수 높은 순으로 스네이크 드래프트)
   const mvpPlayers = scored.filter(p => p.mvpCount > 0).sort((a,b) => b.mvpCount - a.mvpCount || b.score - a.score);
   const others = scored.filter(p => p.mvpCount === 0).sort((a,b) => b.score - a.score);
 
-  const teams = [[], [], []]; // 0=A, 1=B, 2=C
+  const teams = [[], [], []];
   let teamIdx = 0, direction = 1;
 
   const placeInSmallestAvailable = (player) => {
-    // 사이즈 제한 안에서 가장 인원 적은 팀에 배정 (스네이크 방식)
     let attempts = 0;
     while (attempts < 3) {
       if (teams[teamIdx].length < sizes[teamIdx]) {
@@ -815,25 +817,23 @@ function autoAssign3Teams() {
   mvpPlayers.forEach(p => placeInSmallestAvailable(p));
   others.forEach(p => placeInSmallestAvailable(p));
 
-  teamA = teams[0];
-  teamB = teams[1];
+  teamA3 = teams[0];
+  teamB3 = teams[1];
   teamC = teams[2];
+  teamA = []; teamB = [];
+  activeTeamAKey = null; activeTeamBKey = null;
   threeTeamMode = true;
 
   renderThreeTeamPreview();
 }
 
 function renderThreeTeamPreview() {
-  // 참석 확정 전 미리보기는 별도로 안 만들고 바로 confirmAttend 호출
   confirmAttend();
 }
 
-// 3팀 순환 로테이션 초기화 (먼저 온 두 팀 기준)
 function initThreeTeamRotation(firstTwo) {
-  // firstTwo 예: ['a','c'] - 처음 시작하는 두 팀
   const teamsOrder = ['a','b','c'];
   const resting = teamsOrder.find(t => !firstTwo.includes(t));
-  // 순환 패턴: [firstTwo], [firstTwo[1], resting], [resting, firstTwo[0]], 반복...
   threeTeamRotation = [
     [firstTwo[0], firstTwo[1]],
     [firstTwo[1], resting],
@@ -846,8 +846,6 @@ function initThreeTeamRotation(firstTwo) {
 
 function applyCurrentMatchup() {
   const matchup = threeTeamRotation[threeTeamRotationIndex % threeTeamRotation.length];
-  const teamMap = { a: teamA, b: teamB, c: teamC };
-  // 매치업의 첫 팀을 항상 teamA 자리, 두번째를 teamB 자리에 배정해서 저장/표시
   window.currentMatchupTeams = matchup;
   renderThreeTeamPanel();
 }
@@ -867,10 +865,8 @@ function cancel3TeamMode() {
   const ok = confirm('3팀 배정을 해제하고 기존 2팀 방식으로 돌아갈까요?');
   if (!ok) return;
   threeTeamMode = false;
-  teamC = [];
-  threeTeamRotation = [];
-  threeTeamRotationIndex = 0;
-  threeTeamGameCountInRound = 0;
+  teamC = []; teamA3 = []; teamB3 = [];
+  activeTeamAKey = null; activeTeamBKey = null;
   teamA = []; teamB = [];
   document.getElementById('three-team-panel').style.display = 'none';
   renderPanels();
@@ -883,54 +879,54 @@ function renderThreeTeamPanel() {
   panel.style.display = 'block';
 
   const listEl = document.getElementById('three-team-list');
-  const teamMap = { a: teamA, b: teamB, c: teamC };
+  const teamMap = { a: teamA3, b: teamB3, c: teamC };
   const teamLabels = { a: 'A', b: 'B', c: 'C' };
   const teamColors = { a: 'var(--blue)', b: '#F97316', c: '#10B981' };
 
-  listEl.innerHTML = ['a','b','c'].map(t => `
-    <div style="border:1.5px solid ${teamColors[t]};border-radius:var(--rs);padding:8px;">
-      <div style="font-size:12px;font-weight:700;color:${teamColors[t]};margin-bottom:4px;">팀 ${teamLabels[t]} (${teamMap[t].length})</div>
-      <div style="font-size:11px;color:var(--sub);line-height:1.6;">${teamMap[t].map(pname).join(', ')}</div>
-    </div>
-  `).join('');
-
-  // 먼저 경기할 두 팀 선택 버튼
-  const nextEl = document.getElementById('next-matchup');
-  if (!window.currentMatchupTeams) {
-    nextEl.innerHTML = `
-      <div style="font-size:12px;color:#92400E;margin-bottom:8px;font-weight:700;">먼저 경기할 두 팀을 선택하세요</div>
-      <div style="display:flex;gap:6px;justify-content:center;" id="first-team-btns">
-        ${['a','b','c'].map(t=>`<button onclick="toggleFirstTeamInline('${t}')" id="ftb-${t}" style="padding:10px 16px;border:2px solid ${teamColors[t]};border-radius:10px;font-size:14px;font-weight:700;color:${teamColors[t]};background:#fff;cursor:pointer;">팀 ${teamLabels[t]}</button>`).join('')}
+  listEl.innerHTML = ['a','b','c'].map(t => {
+    const isSelectedA = activeTeamAKey === t;
+    const isSelectedB = activeTeamBKey === t;
+    const isSelected = isSelectedA || isSelectedB;
+    return `
+      <div onclick="selectTeamForMatch('${t}')" style="border:2px solid ${isSelected ? teamColors[t] : 'var(--border)'};border-radius:var(--rs);padding:8px;cursor:pointer;background:${isSelected ? (t==='a'?'#EEF4FF':t==='b'?'#FFF5EE':'#ECFDF5') : '#F9FAFB'};">
+        <div style="font-size:12px;font-weight:700;color:${teamColors[t]};margin-bottom:4px;">
+          팀 ${teamLabels[t]} (${teamMap[t].length}) ${isSelected ? '✓' : ''}
+        </div>
+        <div style="font-size:11px;color:var(--sub);line-height:1.6;">${teamMap[t].map(pname).join(', ')}</div>
       </div>
-      <button onclick="confirmFirstTeamsInline()" style="margin-top:10px;width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">경기 시작</button>
     `;
+  }).join('');
+
+  const nextEl = document.getElementById('next-matchup');
+  if (activeTeamAKey && activeTeamBKey) {
+    nextEl.textContent = `🔥 이번 경기: 팀 ${teamLabels[activeTeamAKey]} vs 팀 ${teamLabels[activeTeamBKey]}`;
   } else {
-    const matchup = window.currentMatchupTeams;
-    nextEl.textContent = `🔥 이번 경기: 팀 ${teamLabels[matchup[0]]} vs 팀 ${teamLabels[matchup[1]]} (${threeTeamGameCountInRound+1}/2경기)`;
-    applyMatchupToActiveTeams();
+    nextEl.textContent = '👆 경기할 두 팀을 탭해서 선택하세요';
   }
 }
 
-let activeTeamAKey = 'a', activeTeamBKey = 'b';
-let matchSelectStep = 0; // 0=첫번째팀선택, 1=두번째팀선택
+let activeTeamAKey = null, activeTeamBKey = null;
 
 function selectTeamForMatch(t) {
-  const teamMap = { a: teamA, b: teamB, c: teamC };
-  if (matchSelectStep === 0) {
-    // 첫 번째 팀 선택 → teamA 자리에 배정
-    window._matchTeam1 = t;
-    matchSelectStep = 1;
-    alert(`팀${t.toUpperCase()} 선택됨! 이제 상대 팀을 선택하세요`);
-  } else {
-    // 두 번째 팀 선택 → teamB 자리에 배정
-    if (t === window._matchTeam1) { alert('다른 팀을 선택해주세요'); return; }
-    window.currentMatchupTeams = [window._matchTeam1, t];
-    activeTeamAKey = window._matchTeam1;
+  const teamMap = { a: teamA3, b: teamB3, c: teamC };
+  if (activeTeamAKey === t) {
+    activeTeamAKey = null;
+  } else if (activeTeamBKey === t) {
+    activeTeamBKey = null;
+  } else if (!activeTeamAKey) {
+    activeTeamAKey = t;
+  } else if (!activeTeamBKey && t !== activeTeamAKey) {
     activeTeamBKey = t;
-    matchSelectStep = 0;
-    renderThreeTeamPanel();
-    renderPanels();
+  } else {
+    activeTeamAKey = t;
+    activeTeamBKey = null;
   }
+
+  teamA = activeTeamAKey ? teamMap[activeTeamAKey] : [];
+  teamB = activeTeamBKey ? teamMap[activeTeamBKey] : [];
+
+  renderThreeTeamPanel();
+  renderPanels();
 }
 function applyMatchupToActiveTeams() {
   const matchup = window.currentMatchupTeams || ['a','b'];
@@ -1065,7 +1061,8 @@ async function cancelAttend() {
 
   attendees = []; attendConfirmed = false; teamA = []; teamB = [];
   lastSurvivor = null; consecutiveWinner = null; consecutiveCount = 0; isResetState = true;
-  threeTeamMode = false; teamC = []; threeTeamRotation = []; threeTeamRotationIndex = 0; threeTeamGameCountInRound = 0;
+  threeTeamMode = false; teamC = []; teamA3 = []; teamB3 = [];
+  activeTeamAKey = null; activeTeamBKey = null;
   document.getElementById('sn1').className = 'sn'; document.getElementById('sn1').textContent = '1';
   document.getElementById('step2-card').style.display = 'none';
   document.getElementById('bench-info').innerHTML = '';
@@ -1079,18 +1076,11 @@ function resetAttend() {
 }
 
 function renderPanels() {
-  // 3팀 모드일 때 현재 매치업 팀 자동 반영
-  if (threeTeamMode && window.currentMatchupTeams) {
-    const teamMap = { a: teamA, b: teamB, c: teamC };
-    teamA = teamMap[activeTeamAKey] || [];
-    teamB = teamMap[activeTeamBKey] || [];
-  }
   const sortedAttendees = [...attendees].sort((a, b) => pname(a).localeCompare(pname(b), 'ko'));
   const date = document.getElementById('game-date')?.value;
   const todayGames = games.filter(g => g.date === date);
   const currentNo = parseInt(document.getElementById('game-no')?.value || 1);
 
-  // 6경기 이상일 때 0승 선수 체크
   const zeroWinIds = new Set();
   if (currentNo >= 6 && todayGames.length >= 5) {
     attendees.forEach(id => {
@@ -1187,7 +1177,7 @@ async function saveGame() {
   });
   const rA=sa>sb?'win':sa===sb?'draw':'loss';
   const rB=sa<sb?'win':sa===sb?'draw':'loss';
-  // 팀 상태 저장 (다른 기기에서도 복원 가능하도록)
+  
   const survivingTeamAfter = (() => {
     if (rA === 'draw') {
       if (isResetState || lastSurvivor === null) return null;
@@ -1230,28 +1220,22 @@ async function saveGame() {
     games.push(g); saveLocal();
   }
 
-  // ── 팀 자동 선택/해제 로직 ──
   const savedTeamA = [...teamA];
   const savedTeamB = [...teamB];
   teamA=[]; teamB=[];
 
   if (rA === 'draw') {
-    // 무승부 처리
     if (isResetState || lastSurvivor === null) {
-      // 리셋 상태의 무승부 → 양팀 전부 해제, 리셋 유지
       lastSurvivor = null;
       isResetState = true;
       consecutiveWinner = null;
       consecutiveCount = 0;
     } else {
-      // 일반 무승부 → 살아남았던 팀 나가고 상대팀이 원래 위치 그대로 유지
       if (lastSurvivor === 'a') {
-        // A팀이 살아있었으면 A팀 나가고 B팀 유지
         teamA = [];
         teamB = savedTeamB.slice();
         lastSurvivor = 'b';
       } else {
-        // B팀이 살아있었으면 B팀 나가고 A팀 유지
         teamA = savedTeamA.slice();
         teamB = [];
         lastSurvivor = 'a';
@@ -1261,11 +1245,9 @@ async function saveGame() {
       isResetState = false;
     }
   } else {
-    // 승패 처리
     const winnerSide = rA === 'win' ? 'a' : 'b';
     const winnerTeam = winnerSide === 'a' ? savedTeamA : savedTeamB;
 
-    // 연승 카운트 갱신
     if (consecutiveWinner === winnerSide) {
       consecutiveCount++;
     } else {
@@ -1274,14 +1256,12 @@ async function saveGame() {
     }
 
     if (consecutiveCount >= 2) {
-      // 2연승 → 전부 선택해제, 리셋 상태
       teamA = []; teamB = [];
       lastSurvivor = null;
       consecutiveWinner = null;
       consecutiveCount = 0;
       isResetState = true;
     } else {
-      // 1승 → 이긴 팀 유지, 진 팀 해제
       teamA = winnerTeam.slice();
       teamB = [];
       lastSurvivor = winnerSide;
@@ -1293,7 +1273,7 @@ async function saveGame() {
   document.getElementById('ga-inputs').innerHTML='';
   document.getElementById('game-no').value = no+1;
   renderPanels(); updateFilters(); renderLog();
-  if (threeTeamMode) advanceMatchupIfNeeded();
+  if (threeTeamMode) renderThreeTeamPanel();
   restore();
   alert(`${no}번째 경기 저장됐어요!`);
 }
@@ -1311,7 +1291,6 @@ function openEditModal(id) {
   document.getElementById('edit-score-a').textContent = gScoreA(g);
   document.getElementById('edit-score-b').textContent = gScoreB(g);
 
-  // 골/어시스트 불러오기
   const gaEl = document.getElementById('edit-ga-inputs');
   gaEl.innerHTML = '';
   const goals = gGoals(g);
@@ -1337,7 +1316,6 @@ function renderEditPanels() {
       gTeamA(g).forEach(id => dayPlayers.add(String(id)));
       gTeamB(g).forEach(id => dayPlayers.add(String(id)));
     }
-    // 그날 참석자도 포함
     attendees.forEach(id => dayPlayers.add(String(id)));
 
     [...dayPlayers].forEach(id => {
@@ -1432,6 +1410,9 @@ function closeEditModal() {
   editGameId = null; editTeamA = []; editTeamB = [];
 }
 
+// ══════════════════════════════════════════
+// ★ 수정사항 1 & 2 적용된 Player Card 분석 영역
+// ══════════════════════════════════════════
 function openPlayerCard(playerId) {
   const p = players.find(x => String(x.id) === String(playerId));
   if (!p) return;
@@ -1441,7 +1422,6 @@ function openPlayerCard(playerId) {
   body.innerHTML = '<div style="color:var(--sub);font-size:14px;">분석 중...</div>';
   document.getElementById('player-card-modal').style.display = 'flex';
 
-  // 이 선수가 출전한 모든 경기
   const myGames = games.filter(g => {
     return gTeamA(g).some(id => String(id) === String(playerId)) ||
            gTeamB(g).some(id => String(id) === String(playerId));
@@ -1452,7 +1432,6 @@ function openPlayerCard(playerId) {
     return;
   }
 
-  // 최근 5경기 결과
   const recent5 = [...myGames].sort((a,b) => b.date?.localeCompare(a.date)||b.no-a.no).slice(0,5);
   const recentHtml = recent5.map(g => {
     const inA = gTeamA(g).some(id => String(id) === String(playerId));
@@ -1463,7 +1442,7 @@ function openPlayerCard(playerId) {
     return `<div style="width:32px;height:32px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;">${label}</div>`;
   }).join('');
 
-  // 베스트 파트너 (같은 팀일 때 승률 가장 높은 선수)
+  // [수정 1] 베스트 파트너 집계 (최소 20전 이상만 데이터 수집)
   const partnerStats = {};
   myGames.forEach(g => {
     const inA = gTeamA(g).some(id => String(id) === String(playerId));
@@ -1481,15 +1460,15 @@ function openPlayerCard(playerId) {
     });
   });
   const partnerList = Object.entries(partnerStats)
-    .filter(([,s]) => s.w+s.d+s.l >= 2)
+    .filter(([,s]) => s.w+s.d+s.l >= 20) // 최소 20전 조건 필터
     .map(([tid,s]) => { const t=s.w+s.d+s.l; return {tid, ...s, t, wr:Math.round(s.w/t*100)}; })
     .sort((a,b) => b.wr-a.wr || b.t-a.t);
   const partner = partnerList[0];
   const partnerHtml = partner
     ? `${pname(partner.tid)} (${partner.t}전 ${partner.w}승 ${partner.d}무 ${partner.l}패 · ${partner.wr}%)`
-    : '-';
+    : '데이터 부족 (20전 이상 필요)';
 
-  // 천적 (상대팀일 때 내가 진 경우가 많은 선수)
+  // [수정 1 & 2] 천적 집계 공식 반영 (최소 20전 이상 & 승점 낮은 사람순 정렬)
   const rivalStats = {};
   myGames.forEach(g => {
     const inA = gTeamA(g).some(id => String(id) === String(playerId));
@@ -1506,15 +1485,18 @@ function openPlayerCard(playerId) {
     });
   });
   const rivalList = Object.entries(rivalStats)
-    .filter(([,s]) => s.w+s.d+s.l >= 2)
-    .map(([tid,s]) => { const t=s.w+s.d+s.l; return {tid, ...s, t, wr:Math.round(s.w/t*100)}; })
-    .sort((a,b) => a.wr-b.wr || b.t-a.t);
-  const rival = rivalList[0];
+    .filter(([,s]) => s.w+s.d+s.l >= 20) // 최소 20전 조건 필터
+    .map(([tid,s]) => { 
+      const t=s.w+s.d+s.l; 
+      const score=(s.w*1)+(s.d*0)+(s.l*-1); // 지정된 신규 공식 계산: 승*1 + 무*0 + 패*-1
+      return {tid, ...s, t, wr:Math.round(s.w/t*100), score}; 
+    })
+    .sort((a,b) => a.score-b.score || b.t-a.t); // 공식 점수가 가장 낮은 사람순 오름차순 정렬
+ const rival = rivalList[0];
   const rivalHtml = rival
     ? `${pname(rival.tid)} (${rival.t}전 ${rival.w}승 ${rival.d}무 ${rival.l}패 · ${rival.wr}%)`
-    : '-';
+    : '데이터 부족 (20전 이상 필요)';
 
-  // 베스트 어시스터 (나한테 어시스트 가장 많이 해준 선수)
   const assistToMe = {};
   games.forEach(g => {
     const goals = gGoals(g);
@@ -1529,7 +1511,6 @@ function openPlayerCard(playerId) {
   const bestAssister = Object.entries(assistToMe).sort((a,b)=>b[1]-a[1])[0];
   const assisterHtml = bestAssister ? `${pname(bestAssister[0])} (${bestAssister[1]}개)` : '-';
 
-  // 베스트 피니셔 (내 어시스트로 골 가장 많이 넣은 선수)
   const goalFromMe = {};
   games.forEach(g => {
     const goals = gGoals(g);
@@ -1637,7 +1618,6 @@ function renderLog() {
     const gs = dateMap[date];
     const isToday = date === today;
 
-    // 날짜 헤더
     const header = document.createElement('div');
     header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 4px;cursor:pointer;user-select:none;';
     header.innerHTML = `
@@ -1645,7 +1625,6 @@ function renderLog() {
       <span class="toggle-icon" style="font-size:13px;color:var(--sub);">${isToday ? '▲' : '▼'}</span>
     `;
 
-    // 경기 목록 컨테이너
     const body = document.createElement('div');
     body.style.display = isToday ? 'block' : 'none';
 
@@ -1676,7 +1655,6 @@ function renderLog() {
       body.appendChild(card);
     });
 
-    // 헤더 클릭 시 토글
     header.addEventListener('click', () => {
       const open = body.style.display !== 'none';
       body.style.display = open ? 'none' : 'block';
@@ -1691,14 +1669,12 @@ function renderLog() {
   });
 }
 
-// ★ 수정 3: 기본 정렬 승점 내림차순 (-1)
 let sortKey = 'points', sortDir = -1;
 
 function onSeasonChange() {
   const ss = document.getElementById('ss')?.value;
   const sm = document.getElementById('sm');
   if (!sm) return;
-  // 시즌 선택 시 월 필터 초기화
   if (ss) sm.value = '';
   renderStats();
 }
@@ -1710,7 +1686,6 @@ function sortStats(key) {
 }
 
 function renderStats() {
-  // 시즌 필터 → 월 범위로 변환해서 fg에 반영
   const ssEl = document.getElementById('ss');
   const ssVal = ssEl?.value || '';
   const seasonMonths = ssVal === 'kick-off' ? ['4','5','6'] : ssVal === 'full-press' ? ['7','8','9'] : ssVal === 'final-whistle' ? ['10','11','12'] : null;
@@ -1722,7 +1697,6 @@ function renderStats() {
   const sm={};
   players.forEach(p=>{ sm[p.id]={id:p.id, name:p.name,games:0,wins:0,draws:0,losses:0,points:0,goals:0,assists:0,mvp:0}; });
 
-  // MVP 집계 — 필터된 경기 날짜 기준으로만 집계
   const listDates = [...new Set(list.map(g => g.date))];
   listDates.forEach(d => {
     const dayVotes = mvpVotes.filter(x => x.date === d);
@@ -1733,7 +1707,6 @@ function renderStats() {
     if (!sortedDay.length) return;
     const dayMax = sortedDay[0][1];
     const day2nd = sortedDay.find(([,c]) => c < dayMax)?.[1];
-    // 1등(공동 포함) + 2등(공동 포함) 모두 MVP 카운트
     sortedDay.filter(([,c]) => c === dayMax || (day2nd && c === day2nd)).forEach(([id]) => {
       if (sm[id]) sm[id].mvp++;
     });
@@ -1757,7 +1730,6 @@ function renderStats() {
   const byAssists = [...rows].filter(r=>r.assists>0).sort((a,b)=>b.assists-a.assists);
   const byPoints = [...rows].filter(r=>r.points>0).sort((a,b)=>b.points-a.points);
 
-  // ★ 수정 2: 승률 카드 추가 (승률 = 승 / 경기 * 100)
   const byWinRate = [...rows].filter(r=>r.games>0).sort((a,b)=>(b.wins/b.games)-(a.wins/a.games));
   const byAttackPts = [...rows].filter(r=>r.games>0).sort((a,b)=>(b.goals+b.assists)-(a.goals+a.assists));
   const byMvp = [...rows].filter(r=>r.mvp>0).sort((a,b)=>b.mvp-a.mvp);
@@ -1848,13 +1820,11 @@ function renderStats() {
     `;
   }
 
-  // 경기 참석한 모든 선수 표시 (승점 없어도 포함)
   let sorted = [...rows].filter(r=>r.games>0);
   sorted.forEach(s => { s.winRate = s.games>0 ? Math.round(s.wins/s.games*100) : 0; });
   sorted.sort((a,b) => {
     const primary = sortDir * (a[sortKey] - b[sortKey]);
     if (primary !== 0) return primary;
-    // 동점 처리: 1.승률 2.경기수 적은순 3.공격포인트
     const wrDiff = (b.winRate - a.winRate);
     if (wrDiff !== 0) return wrDiff;
     const gamesDiff = (a.games - b.games);
@@ -1862,7 +1832,6 @@ function renderStats() {
     return ((b.goals + b.assists) - (a.goals + a.assists));
   });
 
-  // 정렬 화살표 업데이트
   ['wins','draws','losses','points','winRate','goals','assists','mvp'].forEach(k=>{
     const el=document.getElementById('sort-'+k);
     if(el) el.textContent = sortKey===k ? (sortDir===-1?' ▼':' ▲') : '';
@@ -1887,10 +1856,9 @@ function renderStats() {
 // ══════════════════════════════════════════
 // MVP 투표
 // ══════════════════════════════════════════
-let myIdentityId = null; // 현재 사용자가 선택한 자신의 player id
-let mvpVotes = [];       // Supabase에서 불러온 투표 목록
+let myIdentityId = null; 
+let mvpVotes = [];       
 
-// 내 정체 선택 칩 렌더
 function renderIdentityChips() {
   const el = document.getElementById('mvp-identity-chips'); 
   if (!el) return;
@@ -1925,7 +1893,6 @@ function resetIdentity() {
   document.getElementById('mvp-vote-area').innerHTML = '';
 }
 
-// 날짜 선택 드롭다운 동기화
 function updateMvpDateSel() {
   const sel = document.getElementById('mvp-date-sel');
   if (!sel) return;
@@ -1933,7 +1900,6 @@ function updateMvpDateSel() {
   const dates = [...new Set(games.map(g => g.date).filter(Boolean))].sort().reverse();
   sel.innerHTML = '<option value="">날짜를 선택하세요</option>' +
     dates.map(d => `<option value="${d}"${d === cur ? ' selected' : ''}>${d}</option>`).join('');
-  // 날짜가 하나도 없으면 오늘 날짜의 attendance 기준으로 자동 선택
   if (!cur && dates.length > 0) sel.value = dates[0];
 }
 
@@ -1952,7 +1918,6 @@ async function renderMvpTab() {
   updateMvpDateSel();
   renderIdentityChips();
 
-  // 로컬 저장된 내 id 복원
   if (!myIdentityId) {
     const saved = localStorage.getItem('mvp_my_id');
     if (saved) {
@@ -1960,7 +1925,6 @@ async function renderMvpTab() {
       if (p) selectIdentity(p.id, p.name);
     }
   } else {
-    // 이미 선택돼 있으면 chips 숨기기
     document.getElementById('mvp-identity-chips').style.display = 'none';
     document.getElementById('mvp-identity-chosen').style.display = 'block';
     const p = players.find(x => String(x.id) === String(myIdentityId));
@@ -1974,14 +1938,12 @@ async function renderMvpTab() {
 }
 
 function getMvpCandidates(date) {
-  // 해당 날짜 경기에 출전한 모든 선수
   const dayGames = games.filter(g => g.date === date);
   const ids = new Set();
   dayGames.forEach(g => {
     gTeamA(g).forEach(id => ids.add(String(id)));
     gTeamB(g).forEach(id => ids.add(String(id)));
   });
-  // attendance에서 보완
   return [...ids].map(id => players.find(p => String(p.id) === id)).filter(Boolean);
 }
 
@@ -1998,7 +1960,6 @@ function renderMvpVoteArea() {
     return;
   }
 
-  // 내가 이미 투표한 목록 (최대 3명)
   const myVotes = mvpVotes.filter(v => String(v.voter_id) === String(myIdentityId) && v.date === date);
   const myVotedIds = myVotes.map(v => String(v.candidate_id));
   const voteCount = myVotes.length;
@@ -2038,9 +1999,8 @@ async function castVote(date, candidateId) {
   if (String(candidateId) === String(myIdentityId)) { alert('본인에게는 투표할 수 없어요'); return; }
   if (!isOnline) { alert('오프라인 상태에서는 투표할 수 없어요'); return; }
 
-  // 투표 마감 시간 체크 (해당 날짜 자정까지)
   const deadline = new Date(date);
-  deadline.setDate(deadline.getDate() + 1); // 다음날 00:00:00
+  deadline.setDate(deadline.getDate() + 1); 
   if (new Date() >= deadline) { alert(`${date} MVP 투표가 마감됐어요 🔒\n투표는 당일 자정까지만 가능해요`); return; }
 
   const myVotes = mvpVotes.filter(v => String(v.voter_id) === String(myIdentityId) && v.date === date);
@@ -2048,13 +2008,11 @@ async function castVote(date, candidateId) {
 
   try {
     if (existingVote) {
-      // 이미 투표한 사람 → 취소
       await sbFetch(`mvp_votes?id=eq.${existingVote.id}`, {
         method: 'DELETE',
         prefer: 'return=minimal'
       });
     } else {
-      // 새로 투표
       if (myVotes.length >= 3) { alert('최대 3명까지만 선택할 수 있어요'); return; }
       await sbFetch('mvp_votes', {
         method: 'POST',
@@ -2075,7 +2033,6 @@ function renderMvpResult() {
   const date = document.getElementById('mvp-date-sel')?.value;
   if (!date || !mvpVotes.length) { el.innerHTML = ''; return; }
 
-  // 날짜별 집계
   const tally = {};
   mvpVotes.filter(v => v.date === date).forEach(v => {
     const cid = String(v.candidate_id);
@@ -2119,7 +2076,6 @@ function renderMvpResult() {
   });
   resultHtml += '</div>';
 
-  // 역대 MVP 통계 — 날짜별로 딱 한 번만 집계, 동점이면 공동 MVP
   const allTally = {};
   const allDates = [...new Set(mvpVotes.map(v => v.date))];
   allDates.forEach(d => {
@@ -2130,14 +2086,12 @@ function renderMvpResult() {
     if (!sortedDay.length) return;
     const dayMax = sortedDay[0][1];
     const day2nd = sortedDay.find(([,c]) => c < dayMax)?.[1];
-    // 1등(공동 포함) + 2등(공동 포함) 모두 카운트
     sortedDay.filter(([,c]) => c === dayMax || (day2nd && c === day2nd)).forEach(([id]) => {
       allTally[id] = (allTally[id] || 0) + 1;
     });
   });
   const allSorted = Object.entries(allTally).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-  // 오늘 날짜 공동 MVP 표시용
   const todayWinners = (() => {
     if (!totalVotes) return [];
     const sortedTally = Object.entries(tally).sort((a,b) => b[1]-a[1]);
@@ -2147,7 +2101,6 @@ function renderMvpResult() {
   })();
   const isShared = todayWinners.length > 1;
 
-  // MVP 카드 상단 재구성 (공동 MVP 반영)
   const mvpCardEl = el.querySelector('.mvp-result-card');
   if (mvpCardEl) {
     mvpCardEl.querySelector('.mvp-result-name').textContent = todayWinners.map(id => { const p = players.find(x => String(x.id) === id); return p ? p.name : '?'; }).join(' · ');
@@ -2175,25 +2128,21 @@ function renderMvpResult() {
     `;
   }
 
-  // 0승 명예의 전당 — 날짜별로 참석했는데 하루 한 번도 못 이긴 횟수 집계
   const zeroTally = {};
   const gameDates = [...new Set(games.map(g => g.date))];
   gameDates.forEach(d => {
     const dayGames = games.filter(g => g.date === d);
-    // 그날 출전한 모든 선수
     const dayPlayers = new Set();
     dayGames.forEach(g => {
       gTeamA(g).forEach(id => dayPlayers.add(String(id)));
       gTeamB(g).forEach(id => dayPlayers.add(String(id)));
     });
-    // 그날 이긴 적 있는 선수
     const dayWinners = new Set();
     dayGames.forEach(g => {
       const rA = gResultA(g);
       if (rA === 'win') gTeamA(g).forEach(id => dayWinners.add(String(id)));
       if (rA === 'loss') gTeamB(g).forEach(id => dayWinners.add(String(id)));
     });
-    // 출전했지만 한 번도 못 이긴 선수
     dayPlayers.forEach(id => {
       if (!dayWinners.has(id)) {
         const p = players.find(x => String(x.id) === id);
@@ -2237,7 +2186,6 @@ if (dateEl) {
   dateEl.addEventListener('change', () => {
     attendees = []; attendConfirmed = false; teamA = []; teamB = [];
     lastSurvivor = null; consecutiveWinner = null; consecutiveCount = 0; isResetState = true;
-    // 마지막 경기에서 팀 상태 복원
     const newDate = dateEl.value;
     const dayGames = games.filter(g => g.date === newDate).sort((a,b) => b.no - a.no);
     if (dayGames.length > 0) {
@@ -2247,7 +2195,6 @@ if (dateEl) {
         consecutiveWinner = last.consecutive_winner;
         consecutiveCount = last.consecutive_count || 0;
         isResetState = last.is_reset !== false ? true : (last.surviving_team === null);
-        // 살아남은 팀 자동 선택
         if (last.surviving_team === 'a') teamA = [...(last.team_a || [])];
         else if (last.surviving_team === 'b') teamB = [...(last.team_b || [])];
       }
@@ -2255,7 +2202,6 @@ if (dateEl) {
     const gNoEl = document.getElementById('game-no'); if (gNoEl) gNoEl.value = 1; 
     const sn1 = document.getElementById('sn1'); if (sn1) { sn1.className = 'sn'; sn1.textContent = '1'; }
     const s2c = document.getElementById('step2-card'); if (s2c) s2c.style.display = 'none';
-    // 날짜 변경시 경기 목록 필터를 해당 날짜로 자동 설정
     const fdEl = document.getElementById('fd');
     if (fdEl) {
       const newDate = dateEl.value;
@@ -2271,7 +2217,6 @@ if (dateEl) {
 const nameInput = document.getElementById('new-name');
 if (nameInput) nameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') addPlayer(); });
 
-// Service Worker 등록 (PWA)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./service-worker.js');
