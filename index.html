@@ -646,6 +646,7 @@ document.getElementById('modal-cancel').addEventListener('click', () => {
 
 function switchTab(t) {
   document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['record','players','stats','mvp'][i]===t));
+  document.querySelectorAll('.sec').forEach(el => el.classList.remove('remove'));
   document.querySelectorAll('.sec').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   if(t==='stats') renderStats();
@@ -1696,7 +1697,7 @@ function renderStats() {
     return seasonMonths.includes(m);
   });
   const sm={};
-  players.forEach(p=>{ sm[p.id]={id:p.id, name:p.name,games:0,wins:0,draws:0,losses:0,points:0,goals:0,assists:0,attackPts:0,mvp:0}; });
+  players.forEach(p=>{ sm[p.id]={id:p.id, name:p.name,games:0,wins:0,draws:0,losses:0,points:0,goals:0,assists:0,attackPts:0,mvp:0,dates:new Set(),totalLossGoals:0}; });
 
   const listDates = [...new Set(list.map(g => g.date))];
   listDates.forEach(d => {
@@ -1713,8 +1714,23 @@ function renderStats() {
     });
   });
   list.forEach(g=>{
-    gTeamA(g).forEach(id=>{ if(!sm[id])return; sm[id].games++; if(gResultA(g)==='win'){sm[id].wins++;sm[id].points+=2;}else if(gResultA(g)==='draw'){sm[id].draws++;sm[id].points++;}else sm[id].losses++; });
-    gTeamB(g).forEach(id=>{ if(!sm[id])return; sm[id].games++; if(gResultB(g)==='win'){sm[id].wins++;sm[id].points+=2;}else if(gResultB(g)==='draw'){sm[id].draws++;sm[id].points++;}else sm[id].losses++; });
+    const sA = gScoreA(g);
+    const sB = gScoreB(g);
+    
+    gTeamA(g).forEach(id=>{ 
+      if(!sm[id])return; 
+      sm[id].games++; 
+      sm[id].dates.add(g.date); // 출석 일수 수집을 위해 날짜 저장
+      sm[id].totalLossGoals += sB; // 내가 팀A일 때 상대 팀B가 넣은 골이 내 실점
+      if(gResultA(g)==='win'){sm[id].wins++;sm[id].points+=2;}else if(gResultA(g)==='draw'){sm[id].draws++;sm[id].points++;}else sm[id].losses++; 
+    });
+    gTeamB(g).forEach(id=>{ 
+      if(!sm[id])return; 
+      sm[id].games++; 
+      sm[id].dates.add(g.date); // 출석 일수 수집을 위해 날짜 저장
+      sm[id].totalLossGoals += sA; // 내가 팀B일 때 상대 팀A가 넣은 골이 내 실점
+      if(gResultB(g)==='win'){sm[id].wins++;sm[id].points+=2;}else if(gResultB(g)==='draw'){sm[id].draws++;sm[id].points++;}else sm[id].losses++; 
+    });
     
     gGoals(g).forEach(id=>{ if(sm[id]) sm[id].goals++; else {
       const foundId = Object.keys(sm).find(key => String(key) === String(id));
@@ -1726,7 +1742,6 @@ function renderStats() {
     }});
   });
   
-  // 공격포인트(attackPts) 데이터 수치 갱신
   Object.values(sm).forEach(s => { s.attackPts = s.goals + s.assists; });
 
   const rows=Object.values(sm).filter(r=>!r.name.includes('용병'));
@@ -1738,6 +1753,15 @@ function renderStats() {
   const byWinRate = [...rows].filter(r=>r.games>0).sort((a,b)=>(b.wins/b.games)-(a.wins/a.games));
   const byAttackPts = [...rows].filter(r=>r.games>0).sort((a,b)=>b.attackPts-a.attackPts);
   const byMvp = [...rows].filter(r=>r.mvp>0).sort((a,b)=>b.mvp-a.mvp);
+  
+  // 🏃 출석 일수(Days) 기준 정렬
+  const byAttendanceDays = [...rows].sort((a,b) => b.dates.size - a.dates.size);
+  
+  // 🛡️ 실점률 기준 정렬 (최소 10경기 컷트라인 적용)
+  const defenseRows = rows.filter(r => r.games >= 10).map(r => {
+    return { ...r, loseRate: r.totalLossGoals / r.games };
+  }).sort((a,b) => a.loseRate - b.loseRate); // 실점률은 낮을수록 방패왕
+
   const topWinRate = byWinRate[0];
   const topWinRateStr = topWinRate ? Math.round(topWinRate.wins/topWinRate.games*100)+'%' : '0%';
   
@@ -1819,6 +1843,32 @@ function renderStats() {
           <div class="sb-rank2" style="display:none;text-align:right;">
             ${byMvp[1]?'<div style="font-size:12px;color:var(--sub);margin-bottom:3px;">🥈 '+byMvp[1].name+' '+byMvp[1].mvp+'회</div>':''}
             ${byMvp[2]?'<div style="font-size:12px;color:var(--sub);">🥉 '+byMvp[2].name+' '+byMvp[2].mvp+'회</div>':''}
+          </div>
+        </div>
+      </div>
+      <div class="sb" onclick="this.classList.toggle('sb-open')" style="cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="sb-label">출석</div>
+            <div class="sb-val">${byAttendanceDays[0]?.dates.size??0}<span>일</span></div>
+            <div class="sb-leader">${byAttendanceDays[0]?'🏃 '+byAttendanceDays[0].name:'-'}</div>
+          </div>
+          <div class="sb-rank2" style="display:none;text-align:right;">
+            ${byAttendanceDays[1]?'<div style="font-size:12px;color:var(--sub);margin-bottom:3px;">🥈 '+byAttendanceDays[1].name+' '+byAttendanceDays[1].dates.size+'일</div>':''}
+            ${byAttendanceDays[2]?'<div style="font-size:12px;color:var(--sub);">🥉 '+byAttendanceDays[2].name+' '+byAttendanceDays[2].dates.size+'일</div>':''}
+          </div>
+        </div>
+      </div>
+      <div class="sb" onclick="this.classList.toggle('sb-open')" style="cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="sb-label">실점률</div>
+            <div class="sb-val">${defenseRows[0] ? defenseRows[0].loseRate.toFixed(2) : '0.00'}<span>점</span></div>
+            <div class="sb-leader">${defenseRows[0]?'🛡️ '+defenseRows[0].name:'-'}</div>
+          </div>
+          <div class="sb-rank2" style="display:none;text-align:right;">
+            ${defenseRows[1]?'<div style="font-size:12px;color:var(--sub);margin-bottom:3px;">🥈 '+defenseRows[1].name+' '+defenseRows[1].loseRate.toFixed(2)+'점</div>':''}
+            ${defenseRows[2]?'<div style="font-size:12px;color:var(--sub);">🥉 '+defenseRows[2].name+' '+defenseRows[2].loseRate.toFixed(2)+'점</div>':''}
           </div>
         </div>
       </div>
