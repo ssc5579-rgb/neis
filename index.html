@@ -855,8 +855,26 @@ function autoAssign3Teams() {
 
   const scored = list.map(id => ({ id, ...getPlayerScore(id) }));
 
-  const mvpPlayers = scored.filter(p => p.mvpCount > 0).sort((a,b) => b.mvpCount - a.mvpCount || b.score - a.score);
-  const others = scored.filter(p => p.mvpCount === 0).sort((a,b) => b.score - a.score);
+  const shuffleArray = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+  // 점수순 정렬은 유지하되, 3명(팀 수) 단위 티어 안에서만 무작위로 섞어서
+  // 실력 밴드는 유지하면서 매번 같은 조합으로 고정되지 않게 함
+  const shuffleWithinTiers = (sortedList, tierSize = 3) => {
+    const result = [];
+    for (let i = 0; i < sortedList.length; i += tierSize) {
+      result.push(...shuffleArray(sortedList.slice(i, i + tierSize)));
+    }
+    return result;
+  };
+
+  const mvpPlayers = shuffleWithinTiers(scored.filter(p => p.mvpCount > 0).sort((a,b) => b.mvpCount - a.mvpCount || b.score - a.score));
+  const others = shuffleWithinTiers(scored.filter(p => p.mvpCount === 0).sort((a,b) => b.score - a.score));
 
   const teams = [[], [], []];
   let teamIdx = 0, direction = 1;
