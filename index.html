@@ -612,6 +612,8 @@ async function syncStatusFromServer() {
     } else {
       if(gNoInput) gNoInput.value = 1;
     }
+
+    await loadTeamState(date);
   } catch (e) {
     console.warn("Status sync fail:", e.message);
   }
@@ -785,6 +787,61 @@ function getPlayerScore(playerId) {
   return { score, mvpCount };
 }
 
+async function saveTeamState() {
+  const date = document.getElementById('game-date').value;
+  if (!isOnline || !date) return;
+  try {
+    await sbFetch('team_state', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        date,
+        three_team_mode: threeTeamMode,
+        team_a3: teamA3,
+        team_b3: teamB3,
+        team_c: teamC,
+        active_team_a_key: activeTeamAKey,
+        active_team_b_key: activeTeamBKey
+      })
+    });
+  } catch (e) {
+    console.warn('3팀 상태 동기화 실패:', e);
+  }
+}
+
+async function loadTeamState(date) {
+  if (!isOnline || !date) return;
+  try {
+    const data = await sbFetch(`team_state?date=eq.${date}`);
+    if (data && data.length > 0 && data[0].three_team_mode) {
+      const st = data[0];
+      threeTeamMode = true;
+      teamA3 = st.team_a3 || [];
+      teamB3 = st.team_b3 || [];
+      teamC = st.team_c || [];
+      activeTeamAKey = st.active_team_a_key || null;
+      activeTeamBKey = st.active_team_b_key || null;
+      const teamMap = { a: teamA3, b: teamB3, c: teamC };
+      teamA = activeTeamAKey ? teamMap[activeTeamAKey] : [];
+      teamB = activeTeamBKey ? teamMap[activeTeamBKey] : [];
+      renderThreeTeamPanel();
+      renderPanels();
+    }
+  } catch (e) {
+    console.warn('3팀 상태 로드 실패:', e);
+  }
+}
+
+async function clearTeamState() {
+  const date = document.getElementById('game-date').value;
+  if (!isOnline || !date) return;
+  try {
+    await sbFetch(`team_state?date=eq.${date}`, { method: 'DELETE' });
+  } catch (e) {
+    console.warn('3팀 상태 삭제 실패:', e);
+  }
+}
+
 function autoAssign3Teams() {
   const list = [...attendees];
   const n = list.length;
@@ -831,6 +888,7 @@ function autoAssign3Teams() {
   activeTeamAKey = null; activeTeamBKey = null;
   threeTeamMode = true;
 
+  saveTeamState();
   renderThreeTeamPreview();
 }
 
@@ -876,6 +934,7 @@ function cancel3TeamMode() {
   activeTeamAKey = null; activeTeamBKey = null;
   teamA = []; teamB = [];
   document.getElementById('three-team-panel').style.display = 'none';
+  clearTeamState();
   renderPanels();
 }
 
@@ -932,6 +991,7 @@ function selectTeamForMatch(t) {
   teamA = activeTeamAKey ? teamMap[activeTeamAKey] : [];
   teamB = activeTeamBKey ? teamMap[activeTeamBKey] : [];
 
+  saveTeamState();
   renderThreeTeamPanel();
   renderPanels();
 }
@@ -1070,6 +1130,7 @@ async function cancelAttend() {
   lastSurvivor = null; consecutiveWinner = null; consecutiveCount = 0; isResetState = true;
   threeTeamMode = false; teamC = []; teamA3 = []; teamB3 = [];
   activeTeamAKey = null; activeTeamBKey = null;
+  clearTeamState();
   document.getElementById('sn1').className = 'sn'; document.getElementById('sn1').textContent = '1';
   document.getElementById('step2-card').style.display = 'none';
   document.getElementById('bench-info').innerHTML = '';
@@ -1185,7 +1246,9 @@ async function saveGame() {
   const rA=sa>sb?'win':sa===sb?'draw':'loss';
   const rB=sa<sb?'win':sa===sb?'draw':'loss';
   
-  const survivingTeamAfter = (() => {
+  // 3팀 모드일 때는 2팀 전용 승자잔류 상태(surviving_team 등)를 계산하지 않음.
+  // 이후 다른 날 2팀 모드로 돌아갔을 때 엉뚱한 값을 복원하지 않도록 null로 고정.
+  const survivingTeamAfter = threeTeamMode ? null : (() => {
     if (rA === 'draw') {
       if (isResetState || lastSurvivor === null) return null;
       return lastSurvivor === 'a' ? 'b' : 'a';
@@ -1195,19 +1258,19 @@ async function saveGame() {
       return newCount >= 2 ? null : winner;
     }
   })();
-  const consecutiveWinnerAfter = (() => {
+  const consecutiveWinnerAfter = threeTeamMode ? null : (() => {
     if (rA === 'draw') return null;
     const winner = rA === 'win' ? 'a' : 'b';
     const newCount = consecutiveWinner === winner ? consecutiveCount + 1 : 1;
     return newCount >= 2 ? null : winner;
   })();
-  const consecutiveCountAfter = (() => {
+  const consecutiveCountAfter = threeTeamMode ? 0 : (() => {
     if (rA === 'draw') return 0;
     const winner = rA === 'win' ? 'a' : 'b';
     const newCount = consecutiveWinner === winner ? consecutiveCount + 1 : 1;
     return newCount >= 2 ? 0 : newCount;
   })();
-  const isResetAfter = survivingTeamAfter === null;
+  const isResetAfter = threeTeamMode ? true : survivingTeamAfter === null;
 
   const payload = { date, no, team_a:teamA, team_b:teamB, score_a:sa, score_b:sb, result_a:rA, result_b:rB, goals, assists,
     surviving_team: survivingTeamAfter,
@@ -1227,52 +1290,60 @@ async function saveGame() {
     games.push(g); saveLocal();
   }
 
-  const savedTeamA = [...teamA];
-  const savedTeamB = [...teamB];
-  teamA=[]; teamB=[];
-
-  if (rA === 'draw') {
-    if (isResetState || lastSurvivor === null) {
-      lastSurvivor = null;
-      isResetState = true;
-      consecutiveWinner = null;
-      consecutiveCount = 0;
-    } else {
-      if (lastSurvivor === 'a') {
-        teamA = [];
-        teamB = savedTeamB.slice();
-        lastSurvivor = 'b';
-      } else {
-        teamA = savedTeamA.slice();
-        teamB = [];
-        lastSurvivor = 'a';
-      }
-      consecutiveWinner = null;
-      consecutiveCount = 0;
-      isResetState = false;
-    }
+  if (threeTeamMode) {
+    // 3팀 모드: teamA3/teamB3/teamC 명단은 그대로 두고, 다음 매치업만 초기화해서
+    // 항상 수동으로 두 팀을 다시 탭해서 고르도록 함 (팀원이 자동으로 바뀌지 않음).
+    activeTeamAKey = null; activeTeamBKey = null;
+    teamA = []; teamB = [];
+    saveTeamState();
   } else {
-    const winnerSide = rA === 'win' ? 'a' : 'b';
-    const winnerTeam = winnerSide === 'a' ? savedTeamA : savedTeamB;
+    const savedTeamA = [...teamA];
+    const savedTeamB = [...teamB];
+    teamA=[]; teamB=[];
 
-    if (consecutiveWinner === winnerSide) {
-      consecutiveCount++;
+    if (rA === 'draw') {
+      if (isResetState || lastSurvivor === null) {
+        lastSurvivor = null;
+        isResetState = true;
+        consecutiveWinner = null;
+        consecutiveCount = 0;
+      } else {
+        if (lastSurvivor === 'a') {
+          teamA = [];
+          teamB = savedTeamB.slice();
+          lastSurvivor = 'b';
+        } else {
+          teamA = savedTeamA.slice();
+          teamB = [];
+          lastSurvivor = 'a';
+        }
+        consecutiveWinner = null;
+        consecutiveCount = 0;
+        isResetState = false;
+      }
     } else {
-      consecutiveWinner = winnerSide;
-      consecutiveCount = 1;
-    }
+      const winnerSide = rA === 'win' ? 'a' : 'b';
+      const winnerTeam = winnerSide === 'a' ? savedTeamA : savedTeamB;
 
-    if (consecutiveCount >= 2) {
-      teamA = []; teamB = [];
-      lastSurvivor = null;
-      consecutiveWinner = null;
-      consecutiveCount = 0;
-      isResetState = true;
-    } else {
-      teamA = winnerTeam.slice();
-      teamB = [];
-      lastSurvivor = winnerSide;
-      isResetState = false;
+      if (consecutiveWinner === winnerSide) {
+        consecutiveCount++;
+      } else {
+        consecutiveWinner = winnerSide;
+        consecutiveCount = 1;
+      }
+
+      if (consecutiveCount >= 2) {
+        teamA = []; teamB = [];
+        lastSurvivor = null;
+        consecutiveWinner = null;
+        consecutiveCount = 0;
+        isResetState = true;
+      } else {
+        teamA = winnerTeam.slice();
+        teamB = [];
+        lastSurvivor = winnerSide;
+        isResetState = false;
+      }
     }
   }
 
