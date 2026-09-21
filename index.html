@@ -301,7 +301,10 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       <div id="three-team-panel" style="display:none;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div style="font-size:14px;font-weight:700;color:var(--blue);">⚡ 3팀 모드</div>
-          <button class="btn btn-outline" style="padding:6px 12px;font-size:12px;" onclick="cancel3TeamMode()">3팀 배정 해제</button>
+          <div style="display:flex;gap:6px;">
+            <div id="lock-btn-wrap"></div>
+            <button class="btn btn-outline" style="padding:6px 12px;font-size:12px;" onclick="cancel3TeamMode()">3팀 배정 해제</button>
+          </div>
         </div>
         <div id="three-team-list" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;">
@@ -524,6 +527,7 @@ let consecutiveCount = 0;
 let isResetState = true;      
 
 let threeTeamMode = false;
+let threeTeamLocked = false;
 let teamC = [];
 let teamA3 = [], teamB3 = []; 
 let threeTeamRotation = [];
@@ -797,6 +801,7 @@ async function saveTeamState() {
       body: JSON.stringify({
         date,
         three_team_mode: threeTeamMode,
+        locked: threeTeamLocked,
         team_a3: teamA3,
         team_b3: teamB3,
         team_c: teamC,
@@ -816,6 +821,7 @@ async function loadTeamState(date) {
     if (data && data.length > 0 && data[0].three_team_mode) {
       const st = data[0];
       threeTeamMode = true;
+      threeTeamLocked = st.locked || false;
       teamA3 = st.team_a3 || [];
       teamB3 = st.team_b3 || [];
       teamC = st.team_c || [];
@@ -843,6 +849,7 @@ async function clearTeamState() {
 }
 
 function autoAssign3Teams() {
+  if (threeTeamLocked) { alert('팀이 확정되어 있어요. 바꾸려면 먼저 "팀 확정 취소"를 눌러주세요.'); return; }
   const list = [...attendees];
   const n = list.length;
   if (n < 18) { alert('18명 이상일 때만 3팀 배정이 가능해요'); return; }
@@ -944,10 +951,23 @@ function advanceMatchupIfNeeded() {
   }
 }
 
+function lockThreeTeams() {
+  threeTeamLocked = true;
+  saveTeamState();
+  renderThreeTeamPanel();
+}
+
+function unlockThreeTeams() {
+  threeTeamLocked = false;
+  saveTeamState();
+  renderThreeTeamPanel();
+}
+
 function cancel3TeamMode() {
   const ok = confirm('3팀 배정을 해제하고 기존 2팀 방식으로 돌아갈까요?');
   if (!ok) return;
   threeTeamMode = false;
+  threeTeamLocked = false;
   teamC = []; teamA3 = []; teamB3 = [];
   activeTeamAKey = null; activeTeamBKey = null;
   teamA = []; teamB = [];
@@ -961,6 +981,13 @@ function renderThreeTeamPanel() {
   if (!panel) return;
   if (!threeTeamMode) { panel.style.display = 'none'; return; }
   panel.style.display = 'block';
+
+  const lockWrap = document.getElementById('lock-btn-wrap');
+  if (lockWrap) {
+    lockWrap.innerHTML = threeTeamLocked
+      ? `<button class="btn btn-outline" style="padding:6px 12px;font-size:12px;color:#DC2626;border-color:#DC2626;" onclick="unlockThreeTeams()">🔓 팀 확정 취소</button>`
+      : `<button class="btn btn-primary" style="padding:6px 12px;font-size:12px;" onclick="lockThreeTeams()">🔒 팀 확정</button>`;
+  }
 
   const listEl = document.getElementById('three-team-list');
   const teamMap = { a: teamA3, b: teamB3, c: teamC };
