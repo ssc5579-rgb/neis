@@ -284,7 +284,12 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       <div id="auto-3team-card" style="display:none;margin-top:12px;padding:14px;border:1.5px solid var(--blue);border-radius:var(--r);background:#F0F7FF;">
         <div style="font-size:14px;font-weight:700;color:var(--blue);margin-bottom:8px;">👥 18명 이상! 3팀으로 나눌까요?</div>
         <p style="font-size:12px;color:var(--sub);margin-bottom:10px;">MVP 수상자 분산 + 승률/승점/공격포인트 기준으로 황금밸런스 팀을 자동 구성해요</p>
-        <button class="btn btn-primary" style="width:100%;" onclick="autoAssign3Teams()">⚡ 자동 3팀 배정</button>
+        <button class="btn btn-primary" style="width:100%;" onclick="open3TeamSetup()">⚡ 자동 3팀 배정</button>
+        <div id="pre3-board" style="display:none;margin-top:12px;">
+          <p style="font-size:12px;color:var(--sub);margin-bottom:8px;">미리 넣을 사람이 있으면 팀을 눌러 지정하세요 (없으면 바로 자동 배치)</p>
+          <div id="pre3-teams" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;"></div>
+          <button class="btn btn-primary" style="width:100%;" onclick="autoAssign3Teams()">⚡ 자동 배치</button>
+        </div>
       </div>
       <button class="btn btn-primary" style="margin-top:12px;" onclick="confirmAttend()">참석자 확정 →</button>
     </div>
@@ -528,6 +533,7 @@ let isResetState = true;
 
 let threeTeamMode = false;
 let threeTeamLocked = false;
+let preAssign3 = { a: [], b: [], c: [] };
 let teamC = [];
 let teamA3 = [], teamB3 = []; 
 let threeTeamRotation = [];
@@ -848,19 +854,86 @@ async function clearTeamState() {
   }
 }
 
+function get3TeamSizes(n) {
+  const base = Math.floor(n / 3);
+  const remainder = n % 3;
+  const sizes = [base, base, base];
+  for (let i = 0; i < remainder; i++) sizes[i]++;
+  return sizes.sort((a,b) => b-a);
+}
+
+function cleanPreAssign3() {
+  const att = new Set(attendees.map(String));
+  ['a','b','c'].forEach(t => { preAssign3[t] = preAssign3[t].filter(id => att.has(String(id))); });
+}
+
+function open3TeamSetup() {
+  if (threeTeamLocked) { alert('팀이 확정되어 있어요. 바꾸려면 먼저 "팀 확정 취소"를 눌러주세요.'); return; }
+  if (attendees.length < 18) { alert('18명 이상일 때만 3팀 배정이 가능해요'); return; }
+  document.getElementById('pre3-board').style.display = 'block';
+  render3TeamSetup();
+}
+
+function render3TeamSetup() {
+  cleanPreAssign3();
+  const sizes = get3TeamSizes(attendees.length);
+  const colors = { a: 'var(--blue)', b: '#F97316', c: '#10B981' };
+  document.getElementById('pre3-teams').innerHTML = ['a','b','c'].map((t, i) => `
+    <div onclick="pick3TeamMembers('${t}')" style="border:2px solid ${colors[t]};border-radius:var(--rs);padding:8px;cursor:pointer;background:#fff;min-height:72px;">
+      <div style="font-size:12px;font-weight:700;color:${colors[t]};margin-bottom:4px;">팀 ${t.toUpperCase()} (${preAssign3[t].length}/${sizes[i]})</div>
+      <div style="font-size:11px;color:var(--sub);line-height:1.6;">${preAssign3[t].length ? preAssign3[t].map(pname).join(', ') : '탭해서 지정'}</div>
+    </div>`).join('');
+}
+
+function pick3TeamMembers(t) {
+  const sizes = get3TeamSizes(attendees.length);
+  const cap = sizes['abc'.indexOf(t)];
+  const otherTaken = new Set(['a','b','c'].filter(x => x !== t).flatMap(x => preAssign3[x]).map(String));
+  const candidates = [...attendees].filter(id => !otherTaken.has(String(id)))
+    .sort((x, y) => pname(x).localeCompare(pname(y), 'ko'));
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:20px;padding:20px;width:100%;max-width:360px;max-height:80vh;display:flex;flex-direction:column;">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px;">팀 ${t.toUpperCase()} 미리 배정</div>
+      <div id="pick3-cnt" style="font-size:12px;color:var(--sub);margin-bottom:10px;"></div>
+      <div id="pick3-list" style="display:flex;flex-wrap:wrap;gap:6px;overflow-y:auto;margin-bottom:14px;"></div>
+      <button class="btn btn-primary" id="pick3-done">완료</button>
+    </div>`;
+  document.body.appendChild(modal);
+  const draw = () => {
+    document.getElementById('pick3-cnt').textContent = `${preAssign3[t].length}/${cap}명 선택`;
+    document.getElementById('pick3-list').innerHTML = candidates.map(id => {
+      const on = preAssign3[t].some(x => String(x) === String(id));
+      return `<span data-id="${id}" style="padding:8px 12px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid ${on ? 'var(--blue)' : 'var(--border)'};background:${on ? '#EEF4FF' : '#F9FAFB'};color:${on ? 'var(--blue)' : 'inherit'};">${pname(id)}</span>`;
+    }).join('');
+    document.querySelectorAll('#pick3-list span').forEach(el => {
+      el.onclick = () => {
+        const id = el.dataset.id;
+        const has = preAssign3[t].some(x => String(x) === String(id));
+        if (has) preAssign3[t] = preAssign3[t].filter(x => String(x) !== String(id));
+        else if (preAssign3[t].length < cap) preAssign3[t].push(candidates.find(c => String(c) === String(id)));
+        else { alert(`팀 ${t.toUpperCase()}는 최대 ${cap}명까지예요`); return; }
+        draw();
+      };
+    });
+  };
+  draw();
+  document.getElementById('pick3-done').onclick = () => { modal.remove(); render3TeamSetup(); };
+}
+
 function autoAssign3Teams() {
   if (threeTeamLocked) { alert('팀이 확정되어 있어요. 바꾸려면 먼저 "팀 확정 취소"를 눌러주세요.'); return; }
   const list = [...attendees];
   const n = list.length;
   if (n < 18) { alert('18명 이상일 때만 3팀 배정이 가능해요'); return; }
 
-  const base = Math.floor(n / 3);
-  const remainder = n % 3;
-  const sizes = [base, base, base];
-  for (let i = 0; i < remainder; i++) sizes[i]++;
-  sizes.sort((a,b) => b-a);
+  cleanPreAssign3();
+  const preIds = new Set(['a','b','c'].flatMap(t => preAssign3[t]).map(String));
 
-  const scored = list.map(id => ({ id, ...getPlayerScore(id) }));
+  const sizes = get3TeamSizes(n);
+
+  const scored = list.filter(id => !preIds.has(String(id))).map(id => ({ id, ...getPlayerScore(id) }));
 
   const shuffleArray = (arr) => {
     const a = [...arr];
@@ -897,7 +970,7 @@ function autoAssign3Teams() {
   const mvpPlayers = shuffleWithinTiers(entries.filter(e => e.yong ? e.pos < regMvp.length : e.inMvp).map(e => e.p));
   const others = shuffleWithinTiers(entries.filter(e => e.yong ? e.pos >= regMvp.length : !e.inMvp).map(e => e.p));
 
-  const teams = [[], [], []];
+  const teams = [[...preAssign3.a], [...preAssign3.b], [...preAssign3.c]];
   let teamIdx = 0, direction = 1;
 
   const placeInSmallestAvailable = (player) => {
@@ -983,6 +1056,8 @@ function cancel3TeamMode() {
   threeTeamMode = false;
   threeTeamLocked = false;
   teamC = []; teamA3 = []; teamB3 = [];
+  preAssign3 = { a: [], b: [], c: [] };
+  const preBoard2 = document.getElementById('pre3-board'); if (preBoard2) preBoard2.style.display = 'none';
   activeTeamAKey = null; activeTeamBKey = null;
   teamA = []; teamB = [];
   document.getElementById('three-team-panel').style.display = 'none';
@@ -1187,7 +1262,9 @@ async function cancelAttend() {
 
   attendees = []; attendConfirmed = false; teamA = []; teamB = [];
   lastSurvivor = null; consecutiveWinner = null; consecutiveCount = 0; isResetState = true;
-  threeTeamMode = false; teamC = []; teamA3 = []; teamB3 = [];
+  threeTeamMode = false; threeTeamLocked = false; teamC = []; teamA3 = []; teamB3 = [];
+  preAssign3 = { a: [], b: [], c: [] };
+  const preBoard = document.getElementById('pre3-board'); if (preBoard) preBoard.style.display = 'none';
   activeTeamAKey = null; activeTeamBKey = null;
   clearTeamState();
   document.getElementById('sn1').className = 'sn'; document.getElementById('sn1').textContent = '1';
