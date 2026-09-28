@@ -880,8 +880,22 @@ function autoAssign3Teams() {
     return result;
   };
 
-  const mvpPlayers = shuffleWithinTiers(scored.filter(p => p.mvpCount > 0).sort((a,b) => b.mvpCount - a.mvpCount || b.score - a.score));
-  const others = shuffleWithinTiers(scored.filter(p => p.mvpCount === 0).sort((a,b) => b.score - a.score));
+  // 용병은 기록이 의미 없으니 이름 속 숫자(용병1~6)를 티어로 보고,
+  // 정규 멤버 실력 순위 중 해당 티어 위치(1=상위, 6=하위)에 끼워 넣음
+  const isYong = (p) => pname(p.id).includes('용병');
+  const yongTier = (p) => {
+    const m = pname(p.id).match(/\d+/);
+    return Math.min(6, Math.max(1, m ? parseInt(m[0], 10) : 3.5));
+  };
+  const regMvp = scored.filter(p => !isYong(p) && p.mvpCount > 0).sort((a,b) => b.mvpCount - a.mvpCount || b.score - a.score);
+  const regOthers = scored.filter(p => !isYong(p) && p.mvpCount === 0).sort((a,b) => b.score - a.score);
+  const regCount = regMvp.length + regOthers.length;
+  const entries = [
+    ...[...regMvp, ...regOthers].map((p, i) => ({ p, pos: i + 0.5, yong: false, inMvp: i < regMvp.length })),
+    ...scored.filter(isYong).map(p => ({ p, pos: (yongTier(p) - 0.5) / 6 * regCount, yong: true }))
+  ].sort((a, b) => a.pos - b.pos || (a.yong ? 1 : 0) - (b.yong ? 1 : 0));
+  const mvpPlayers = shuffleWithinTiers(entries.filter(e => e.yong ? e.pos < regMvp.length : e.inMvp).map(e => e.p));
+  const others = shuffleWithinTiers(entries.filter(e => e.yong ? e.pos >= regMvp.length : !e.inMvp).map(e => e.p));
 
   const teams = [[], [], []];
   let teamIdx = 0, direction = 1;
