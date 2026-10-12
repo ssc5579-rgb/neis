@@ -341,6 +341,7 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
             <div class="tp-body" id="panel-b"></div>
           </div>
         </div>
+        <div id="match-predict" style="display:none;margin-top:10px;padding:12px;border-radius:var(--rs);background:#F8FAFC;border:1px solid var(--border);font-size:13px;line-height:1.5;"></div>
       </div>
 
       <div class="field">
@@ -353,9 +354,15 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       </div>
 
       <div class="field">
-        <div class="fl">골 · 어시스트 <span style="text-transform:none;font-weight:500;color:var(--hint);">(선택)</span></div>
-        <div id="ga-inputs"></div>
-        <button class="btn btn-outline" onclick="addGA()" style="width:100%;margin-top:6px;">+ 추가</button>
+        <div class="fl">골 <span style="text-transform:none;font-weight:500;color:var(--hint);">(선택)</span></div>
+        <div id="goal-inputs"></div>
+        <button class="btn btn-outline" onclick="addGA('goal')" style="width:100%;margin-top:6px;">+ 추가</button>
+      </div>
+
+      <div class="field">
+        <div class="fl">어시스트 <span style="text-transform:none;font-weight:500;color:var(--hint);">(선택)</span></div>
+        <div id="assist-inputs"></div>
+        <button class="btn btn-outline" onclick="addGA('assist')" style="width:100%;margin-top:6px;">+ 추가</button>
       </div>
       <button class="btn btn-primary" onclick="saveGame()">경기 저장</button>
     </div>
@@ -795,6 +802,63 @@ function getPlayerScore(playerId) {
 
   const score = winRate*3 + points*2 + attackPts*1;
   return { score, mvpCount };
+}
+
+function getBalanceScore(id) {
+  const myGames = games.filter(g =>
+    gTeamA(g).some(tid => String(tid) === String(id)) ||
+    gTeamB(g).some(tid => String(tid) === String(id))
+  );
+  if (!myGames.length) return 0;
+  let wins=0, draws=0, losses=0, goals=0, assists=0;
+  myGames.forEach(g => {
+    const inA = gTeamA(g).some(tid => String(tid) === String(id));
+    const rA = gResultA(g);
+    const myRes = inA ? rA : (rA==='win'?'loss':rA==='loss'?'win':'draw');
+    if (myRes==='win') wins++; else if (myRes==='draw') draws++; else losses++;
+    gGoals(g).forEach(gid => { if (String(gid)===String(id)) goals++; });
+    gAssists(g).forEach(aid => { if (String(aid)===String(id)) assists++; });
+  });
+  const total = wins+draws+losses;
+  const winRate = total>0 ? wins/total*100 : 0;
+  const avgPoints = (wins*3+draws*1)/total;
+  const avgAttackPts = (goals+assists)/total;
+  return winRate*3 + avgPoints*2 + avgAttackPts*1;
+}
+
+function teamAvgBalanceScore(teamIds) {
+  // 용병은 실력 기복이 커서 평균 계산에서 제외 (점수도, 인원수도 빼고 계산)
+  const regulars = teamIds.filter(id => !pname(id).includes('용병'));
+  if (!regulars.length) return null;
+  const sum = regulars.reduce((s, id) => s + getBalanceScore(id), 0);
+  return sum / regulars.length;
+}
+
+function renderMatchPrediction() {
+  const box = document.getElementById('match-predict');
+  if (!box) return;
+  if (threeTeamMode || teamA.length !== 6 || teamB.length !== 6) {
+    box.style.display = 'none';
+    return;
+  }
+  const scoreA = teamAvgBalanceScore(teamA);
+  const scoreB = teamAvgBalanceScore(teamB);
+  if (scoreA === null || scoreB === null) { box.style.display = 'none'; return; }
+
+  const avg = (scoreA + scoreB) / 2;
+  const gapPct = avg > 0 ? Math.abs(scoreA - scoreB) / avg * 100 : 0;
+  const leader = scoreA >= scoreB ? 'A' : 'B';
+
+  let text;
+  if (gapPct < 8) {
+    text = '⚖️ 박빙이에요. 두 팀 전력이 비슷해요.';
+  } else if (gapPct < 18) {
+    text = `${leader==='A'?'🔵':'🟠'} ${leader}팀이 약간 우세해요.`;
+  } else {
+    text = `${leader==='A'?'🔵':'🟠'} ${leader}팀 승리가 유력해요.`;
+  }
+  box.innerHTML = `<b>📊 승부 예측</b><br>${text}`;
+  box.style.display = 'block';
 }
 
 async function saveTeamState() {
@@ -1317,6 +1381,8 @@ function renderPanels() {
     const cntEl = document.getElementById('cnt-'+t);
     if (cntEl) cntEl.textContent = `(${myTeam.length}/6)`;
   });
+
+  renderMatchPrediction();
 }
 
 function toggleTeam(team, id) {
@@ -1330,34 +1396,29 @@ function toggleTeam(team, id) {
 
 function updateScoreByGA() {
   let sa = 0, sb = 0;
-  document.querySelectorAll('#ga-inputs .ga-row').forEach(r => {
-    const selects = r.querySelectorAll('select');
-    const pid = selects[0].value;
-    const type = selects[1].value;
-    if (type === 'goal') {
-      if (teamA.some(id => String(id) === String(pid))) sa++;
-      else if (teamB.some(id => String(id) === String(pid))) sb++;
-    }
+  document.querySelectorAll('#goal-inputs .ga-row').forEach(r => {
+    const pid = r.querySelector('select').value;
+    if (teamA.some(id => String(id) === String(pid))) sa++;
+    else if (teamB.some(id => String(id) === String(pid))) sb++;
   });
   document.getElementById('score-a').value = sa;
   document.getElementById('score-b').value = sb;
 }
 
-function addGA() {
+function addGA(type) {
+  // 그 경기에 실제로 뛰는 팀A+팀B 선수들만 선택지로 보여줌
+  const rosterIds = [...teamA, ...teamB];
   const row = document.createElement('div'); row.className = 'ga-row';
   const s1 = document.createElement('select');
   s1.addEventListener('change', updateScoreByGA);
-  attendees.forEach(id => { const o=document.createElement('option'); o.value=id; o.textContent=pname(id); s1.appendChild(o); });
-  
-  const s2 = document.createElement('select');
-  s2.addEventListener('change', updateScoreByGA);
-  [['goal','골'],['assist','어시스트']].forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; s2.appendChild(o); });
-  
+  rosterIds.forEach(id => { const o=document.createElement('option'); o.value=id; o.textContent=pname(id); s1.appendChild(o); });
+
   const btn = document.createElement('button'); btn.className='btn btn-danger'; btn.style.padding='11px 14px'; btn.textContent='×';
+  const containerId = type === 'goal' ? 'goal-inputs' : 'assist-inputs';
   btn.addEventListener('click', () => { row.remove(); updateScoreByGA(); });
-  
-  row.appendChild(s1); row.appendChild(s2); row.appendChild(btn);
-  document.getElementById('ga-inputs').appendChild(row);
+
+  row.appendChild(s1); row.appendChild(btn);
+  document.getElementById(containerId).appendChild(row);
   updateScoreByGA();
 }
 
@@ -1374,11 +1435,8 @@ async function saveGame() {
   if (!date) { alert('날짜를 입력하세요'); restore(); return; }
   if (teamA.length!==6||teamB.length!==6) { alert('각 팀 6명씩 배정해주세요'); restore(); return; }
   const goals=[], assists=[];
-  document.querySelectorAll('#ga-inputs .ga-row').forEach(r=>{
-    const s=r.querySelectorAll('select');
-    const pid = s[0].value;
-    (s[1].value==='goal'?goals:assists).push(pid);
-  });
+  document.querySelectorAll('#goal-inputs .ga-row select').forEach(s => goals.push(s.value));
+  document.querySelectorAll('#assist-inputs .ga-row select').forEach(s => assists.push(s.value));
   const rA=sa>sb?'win':sa===sb?'draw':'loss';
   const rB=sa<sb?'win':sa===sb?'draw':'loss';
   
@@ -1484,7 +1542,8 @@ async function saveGame() {
   }
 
   document.getElementById('score-a').value=0; document.getElementById('score-b').value=0;
-  document.getElementById('ga-inputs').innerHTML='';
+  document.getElementById('goal-inputs').innerHTML='';
+  document.getElementById('assist-inputs').innerHTML='';
   document.getElementById('game-no').value = no+1;
   renderPanels(); updateFilters(); renderLog();
   if (threeTeamMode) renderThreeTeamPanel();
