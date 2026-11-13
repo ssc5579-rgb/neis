@@ -397,7 +397,7 @@ input:focus,select:focus { border-color:var(--blue); background:#fff; }
       <select id="sd" onchange="renderStats()"><option value="">전체 날짜</option></select>
     </div>
     <div class="frow" style="margin-top:-4px;">
-      <select id="ss" onchange="onSeasonChange()" style="flex:1;"><option value="">전체 시즌</option><option value="kick-off">⚽ Kick-Off (4~6월)</option><option value="full-press">🔥 Full-Press (7~9월)</option><option value="final-whistle">🏁 Final-Whistle (10~12월)</option></select>
+      <select id="ss" onchange="onSeasonChange()" style="flex:1;"><option value="">전체 시즌</option><option value="kick-off">⚽ Kick-Off (3~6월)</option><option value="final-whistle">🏁 Final-Whistle (9~12월)</option></select>
     </div>
     <div class="stat-grid" id="stat-summary"></div>
     <div class="card">
@@ -795,9 +795,9 @@ function getPlayerScore(playerId) {
     const sortedDay = Object.entries(dayTally).sort((a,b)=>b[1]-a[1]);
     if (!sortedDay.length) return;
     const dayMax = sortedDay[0][1];
-    const day2nd = sortedDay.find(([,c]) => c < dayMax)?.[1];
-    const isTopOrSecond = sortedDay.some(([id,c]) => String(id)===String(playerId) && (c===dayMax || (day2nd && c===day2nd)));
-    if (isTopOrSecond) mvpCount++;
+    const mvpMinVotes = [...new Set(sortedDay.map(([,c]) => c))].slice(0,3).pop();
+    const isTop3 = sortedDay.some(([id,c]) => String(id)===String(playerId) && c >= mvpMinVotes);
+    if (isTop3) mvpCount++;
   });
 
   const score = winRate*3 + points*2 + attackPts*1;
@@ -1956,7 +1956,7 @@ function sortStats(key) {
 function renderStats() {
   const ssEl = document.getElementById('ss');
   const ssVal = ssEl?.value || '';
-  const seasonMonths = ssVal === 'kick-off' ? ['4','5','6'] : ssVal === 'full-press' ? ['7','8','9'] : ssVal === 'final-whistle' ? ['10','11','12'] : null;
+  const seasonMonths = ssVal === 'kick-off' ? ['3','4','5','6'] : ssVal === 'final-whistle' ? ['9','10','11','12'] : null;
   const list = fg('sy','sm','sd').filter(g => {
     if (!seasonMonths) return true;
     const m = String(parseInt((g.date||'').split('-')[1]||0));
@@ -1974,8 +1974,8 @@ function renderStats() {
     const sortedDay = Object.entries(dayTally).sort((a,b) => b[1]-a[1]);
     if (!sortedDay.length) return;
     const dayMax = sortedDay[0][1];
-    const day2nd = sortedDay.find(([,c]) => c < dayMax)?.[1];
-    sortedDay.filter(([,c]) => c === dayMax || (day2nd && c === day2nd)).forEach(([id]) => {
+    const mvpMinVotes = [...new Set(sortedDay.map(([,c]) => c))].slice(0,3).pop();
+    sortedDay.filter(([,c]) => c >= mvpMinVotes).forEach(([id]) => {
       if (sm[id]) sm[id].mvp++;
     });
   });
@@ -2405,8 +2405,8 @@ function renderMvpResult() {
     const sortedDay = Object.entries(dayTally).sort((a,b) => b[1]-a[1]);
     if (!sortedDay.length) return;
     const dayMax = sortedDay[0][1];
-    const day2nd = sortedDay.find(([,c]) => c < dayMax)?.[1];
-    sortedDay.filter(([,c]) => c === dayMax || (day2nd && c === day2nd)).forEach(([id]) => {
+    const mvpMinVotes = [...new Set(sortedDay.map(([,c]) => c))].slice(0,3).pop();
+    sortedDay.filter(([,c]) => c >= mvpMinVotes).forEach(([id]) => {
       allTally[id] = (allTally[id] || 0) + 1;
     });
   });
@@ -2416,8 +2416,8 @@ function renderMvpResult() {
     if (!totalVotes) return [];
     const sortedTally = Object.entries(tally).sort((a,b) => b[1]-a[1]);
     const maxV2 = sortedTally[0][1];
-    const sec = sortedTally.find(([,c]) => c < maxV2)?.[1];
-    return sortedTally.filter(([,c]) => c === maxV2 || (sec && c === sec)).map(([id]) => id);
+    const mvpMinVotes2 = [...new Set(sortedTally.map(([,c]) => c))].slice(0,3).pop();
+    return sortedTally.filter(([,c]) => c >= mvpMinVotes2).map(([id]) => id);
   })();
   const isShared = todayWinners.length > 1;
 
